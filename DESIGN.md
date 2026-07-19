@@ -2,146 +2,194 @@
 
 ## 1. Product summary
 
-Polymorph UI is an adaptive learning interface that recognizes observable reading friction and transforms dense technical documentation into a clearer, more interactive experience.
+Polymorph UI is an adaptive technical-learning interface that recognizes observable reading friction and transforms dense documentation into a clearer, focused, interactive experience while preserving learner agency, privacy, and access to the original material.
 
-### Chosen hackathon use case
+### Chosen use case
 
-**The Self-Pacing Complex Documentation Reader**
+**Self-Pacing Complex Documentation Reader**
 
-The learner reads a dense API-documentation page and completes short knowledge checks. When interaction patterns suggest that the learner is not progressing, Polymorph UI changes the presentation rather than forcing the learner to continue inside the same static layout.
+The learner reads a dense API-documentation lesson about rate limiting and exponential backoff. When privacy-safe interaction summaries indicate that progress has slowed, Polymorph UI offers a controlled adaptation rather than forcing the learner to continue inside the same static layout.
 
 ## 2. Demo promise
 
-The three-minute demonstration must show a clear before-and-after transformation:
+The three-minute demonstration must show one coherent journey:
 
-1. A dense technical document fills the screen.
-2. The learner repeatedly revisits a difficult section.
-3. Polymorph UI detects reading friction.
-4. The interface visibly morphs into a focused learning mode.
-5. Jargon becomes expandable definitions.
-6. The difficult section becomes a simpler explanation with a diagram.
-7. A micro-quiz checks understanding.
-8. The learner succeeds and can return to the original document.
+1. Dense API documentation fills the screen.
+2. The learner revisits a difficult section.
+3. Local deterministic rules identify reading friction and reason codes.
+4. Polymorph UI offers or initiates an approved adaptation.
+5. The interface visibly morphs across presentation, instruction, and interaction.
+6. The learner completes a micro-quiz or advances successfully.
+7. The interface enters recovery and can restore the original document and position.
 
-The transformation should be visually dramatic but technically controlled.
+The transformation must be visually dramatic but technically controlled.
 
-## 3. Problem statement
+## 3. Locked MVP decisions
 
-Technical documentation often assumes that every learner can process the same density, vocabulary, navigation pattern, and pace. Static readers do not respond when a learner repeatedly rereads a paragraph, hovers over unfamiliar terminology, scrolls back and forth, or fails a comprehension check.
+- Education track
+- Technical-documentation reader
+- API rate-limiting and exponential-backoff lesson
+- Next.js App Router, React, strict TypeScript, Tailwind CSS, npm
+- Public no-login demo
+- No authentication, database, persistent learner profiling, or arbitrary uploads
+- No medical, psychological, disability, or emotion diagnosis
+- No raw keystrokes, clipboard capture, camera, microphone, biometrics, or browsing history
+- No arbitrary model-generated React, JavaScript, HTML, CSS, Tailwind classes, or executable code
+- Deterministic friction classifier before any model request
+- GPT-5.6 structured output validated with Zod
+- Controlled React component registry
+- Deterministic fallback when the AI route fails
 
-Polymorph UI makes the interface responsive to learning friction while preserving learner agency and privacy.
+## 4. Dynamic UX principles
 
-## 4. MVP goals
+A meaningful adaptation must change at least one of these layers:
 
-- Demonstrate one polished documentation-reading journey.
-- Capture privacy-safe client interaction summaries.
-- Classify reading friction with deterministic logic.
-- Use GPT-5.6 to produce a structured adaptation plan.
-- Render adaptations through approved React components.
-- Explain why the interface changed.
-- Let the learner pause telemetry, reset the layout, and restore the source document.
-- Provide an offline or API-failure fallback.
+### Presentation adaptation
 
-## 5. Explicit non-goals
+- Collapse secondary navigation
+- Focus one source section
+- Increase spacing and reduce visual competition
+- Emphasize the active paragraph
+- Preserve scroll position and keyboard focus
 
-The MVP will not include:
+### Instructional adaptation
 
-- Authentication or user profiles
-- A database
-- Persistent learner analytics
-- Medical, psychological, disability, or emotion diagnosis
-- Raw keystroke logging
-- Camera, microphone, or biometric analysis
-- Arbitrary model-generated code execution
-- Uploading arbitrary PDFs or websites
-- Multiple learning courses
-- Production-grade personalization across sessions
-- Audio cues
-- A full learning-management system
+- Provide a plain-language explanation
+- Expand technical terminology
+- Render an approved visual map
+- Break the concept into numbered steps
+- Provide a grounded knowledge check
 
-## 6. Primary user journey
+### Interaction adaptation
 
-### Baseline state
+- Present one action or stage at a time
+- Allow original-versus-adapted comparison
+- Explain why the adaptation occurred
+- Allow immediate dismissal, pause, reset, and restoration
 
-The learner sees:
+Dynamic must never mean chaotic. One plan may contain one primary mode and no more than two supporting modes.
 
-- A dense API-documentation article
-- A table of contents
-- Inline code examples
+## 5. Approved modes
+
+| Mode | Visible transformation |
+|---|---|
+| Standard | Full documentation, navigation, code, and supporting details |
+| Focus | One active section, reduced clutter, stronger spacing |
+| Plain Language | Simplified explanation and expandable terminology |
+| Visual Map | Diagram showing requests, 429 response, delay, and retry |
+| Step-by-Step | Numbered concept sequence with one stage emphasized |
+| Check Understanding | One short question with corrective explanation |
+
+## 6. Consent and transition behavior
+
+```text
+Adaptive assistance enabled
+        ↓
+Reading friction detected
+        ↓
+Adaptation notice appears
+        ↓
+Learner may adapt now or remain in standard mode
+        ↓
+Controlled UI transition
+        ↓
+Why this changed / Show original / Pause / Reset
+```
+
+Recommended notice:
+
+> This section has been revisited several times. Polymorph UI can simplify the presentation while keeping the original material available.
+>
+> **Adapt now** · **Stay in standard view**
+
+If automatic assistance was explicitly enabled during onboarding, the demo may transition automatically after a short visible notice. Learner controls must remain available in every adapted state.
+
+## 7. Primary user journey
+
+### Baseline
+
+- Dense API-documentation article
+- Table of contents
+- Inline code example
 - Technical vocabulary
-- A short knowledge check
-- A progress indicator
+- Progress indicator
+- Baseline comprehension question
+- Adaptive-assistance onboarding control
 
 ### Observable friction
 
-The demo should be able to trigger adaptation through realistic or simulated signals:
+The demo may use genuine or clearly labeled simulated signals:
 
-- The same paragraph is selected three or more times.
-- The learner reverses scroll direction repeatedly within a short window.
-- The learner hovers over a glossary term for an extended period.
-- The learner remains inactive while the difficult section is visible.
-- The learner answers the related micro-quiz incorrectly more than once.
+- Repeated selection of the same section
+- Multiple scroll-direction reversals
+- Extended hover or keyboard focus on a glossary term
+- Inactivity while the difficult section is visible
+- Repeated incorrect quiz attempts
 
 ### Adapted state
 
-The UI can apply one or more approved changes:
+- Secondary navigation may collapse
+- The current source section remains anchored
+- Plain-language explanation appears
+- Glossary definitions become expandable
+- One approved visual diagram appears
+- The concept can become step-by-step
+- A short knowledge check confirms understanding
+- `Why this changed`, `Show original`, `Pause`, `Dismiss`, and `Reset` remain available
 
-- Hide secondary navigation.
-- Increase readable line length and spacing.
-- Focus on one section.
-- Replace jargon with expandable definitions.
-- Display a plain-language explanation.
-- Display a prebuilt visual diagram.
-- Break the concept into numbered steps.
-- Generate a short micro-quiz.
-- Offer a `Show original wording` control.
-- Explain why the adaptation occurred.
+### Recovery
 
-### Recovery state
+Recovery may be inferred when the learner:
 
-Recovery can be inferred when the learner:
-
-- Completes the micro-quiz correctly
+- Completes the knowledge check correctly
 - Advances to the next section
 - Stops generating repeated friction signals
-- Chooses to return to the standard reader
+- Chooses to return to standard view
 
-## 7. State model
+## 8. State model
 
 ```text
 BASELINE
-  |
-  v
-OBSERVING
-  |
-  +--> STEADY ----------------------> BASELINE
-  |
-  +--> FRICTION_SUSPECTED
-             |
-             v
-       ADAPTATION_REQUESTED
-             |
-       +-----+------+
-       |            |
-       v            v
-   ADAPTED       FALLBACK_ADAPTED
-       |            |
-       +------v-----+
-            RECOVERED
-               |
-               v
-            BASELINE
+  → OBSERVING
+  → FRICTION_SUSPECTED
+  → ADAPTATION_OFFERED
+      ├─→ ADAPTATION_DECLINED → OBSERVING
+      └─→ ADAPTATION_REQUESTED
+            ├─→ ADAPTED
+            └─→ FALLBACK_ADAPTED
+                  ↓
+              RECOVERING
+                  ↓
+               RECOVERED
+                  ↓
+               BASELINE
 ```
 
-The app must not call the AI endpoint for every browser event. Local deterministic rules decide when a compact assessment is eligible for adaptation.
+The app must not call the AI endpoint for every browser event. Local deterministic rules decide when an episode is eligible.
 
-## 8. Core contracts
-
-The exact implementation may evolve, but these contracts should remain conceptually stable.
+## 9. Shared contracts
 
 ```ts
+export type AdaptationMode =
+  | "focus"
+  | "plain-language"
+  | "visual-map"
+  | "step-by-step"
+  | "check-understanding";
+
+export type ReasonCode =
+  | "REPEATED_SELECTION"
+  | "SCROLL_REVERSAL"
+  | "JARGON_DWELL"
+  | "INACTIVITY"
+  | "QUIZ_RETRY";
+
 export type ReadingTelemetry = {
+  episodeId: string;
   sectionId: string;
+  activeSectionAnchor: string;
+  adaptiveAssistanceEnabled: boolean;
+  source: "genuine" | "demo";
   selectionRepeatCount: number;
   scrollReversalCount: number;
   jargonHoverMs: number;
@@ -152,271 +200,230 @@ export type ReadingTelemetry = {
 };
 
 export type FrictionAssessment = {
-  state: "steady" | "possible-confusion" | "high-friction";
+  episodeId: string;
+  state:
+    | "steady"
+    | "possible-confusion"
+    | "high-friction"
+    | "recovering";
   score: number;
-  reasonCodes: Array<
-    | "REPEATED_SELECTION"
-    | "SCROLL_REVERSAL"
-    | "JARGON_DWELL"
-    | "INACTIVITY"
-    | "QUIZ_RETRY"
-  >;
+  reasonCodes: ReasonCode[];
   eligibleForAdaptation: boolean;
+  recommendedModes: AdaptationMode[];
 };
 
 export type AdaptationPlan = {
-  mode: "focus" | "plain-language" | "visual-stepper" | "quiz-support";
-  density: "standard" | "reduced";
-  hideSecondaryNavigation: boolean;
-  heading: string;
-  explanation: string;
-  glossary: Array<{
-    term: string;
-    definition: string;
-  }>;
-  steps: string[];
-  quiz: Array<{
+  sourceSectionId: string;
+  frictionState: FrictionAssessment["state"];
+  primaryMode: AdaptationMode;
+  supportingModes: AdaptationMode[];
+
+  presentation: {
+    density: "standard" | "reduced";
+    hideSecondaryNavigation: boolean;
+    emphasizeCurrentSection: boolean;
+    increaseSpacing: boolean;
+    preserveScrollPosition: true;
+  };
+
+  instructionalSupport: {
+    heading: string;
+    explanation: string;
+    glossary: Array<{
+      term: string;
+      definition: string;
+    }>;
+    steps: string[];
+    analogy?: string;
+    diagramType:
+      | "request-cycle"
+      | "retry-timeline"
+      | "rate-limit-window"
+      | "none";
+  };
+
+  knowledgeCheck?: {
     question: string;
     options: string[];
     correctIndex: number;
     explanation: string;
-  }>;
-  reasonSummary: string;
-  sourceSectionId: string;
+  };
+
+  transparency: {
+    reasonSummary: string;
+    reasonCodes: ReasonCode[];
+  };
+
+  controls: {
+    allowDismiss: true;
+    allowReset: true;
+    allowPause: true;
+    showOriginalText: true;
+  };
 };
 ```
 
-All server responses must be schema-validated. Invalid output must never reach the rendering layer.
+All client and server boundaries must use Zod schemas derived from these concepts. Invalid output must never reach the renderer.
 
-## 9. Friction classifier
+## 10. Deterministic classifier
 
-Use deterministic weighted rules before invoking GPT-5.6.
-
-Example starting weights:
+Starting weights:
 
 - Repeated selection: +2
 - Four or more scroll reversals: +2
-- Jargon hover longer than 4 seconds: +1
-- Inactivity longer than 30 seconds: +1
+- Jargon dwell over four seconds: +1
+- Inactivity over 30 seconds: +1
 - Repeated quiz failure: +3
 
-Example starting thresholds:
+Starting thresholds:
 
 - 0–2: steady
 - 3–5: possible confusion
-- 6+: high friction and eligible for adaptation
+- 6+: high friction and eligible when adaptive assistance is enabled
 
-Thresholds are demo configuration, not scientific or diagnostic claims.
+Possible deterministic recommendations:
 
-## 10. Strategic adaptation filter
+- Repeated selection + jargon dwell → plain-language or visual-map
+- Scroll reversals + inactivity → focus or step-by-step
+- Repeated quiz failures → check-understanding plus plain-language
 
-The server prompt should reason through three product questions while returning only the validated schema:
+These are product rules for the demo, not scientific or diagnostic claims.
 
-1. **Observed need:** What do the supplied interaction summaries indicate about where the learner is having difficulty?
-2. **Instructional tension:** How can the interface provide meaningful support without simply giving away the answer?
-3. **High-impact response:** What approved transformation will be clearer and more engaging than a generic popup?
+## 11. Strategic adaptation filter
 
-The model must not infer a diagnosis, protected characteristic, or emotional certainty.
+The server prompt reasons through three questions while returning only the schema:
 
-## 11. Controlled component registry
+1. **Observed need:** What does the supplied assessment indicate about where progress slowed?
+2. **Instructional tension:** How can support be useful without simply giving away the lesson?
+3. **High-impact response:** Which approved modes produce a clearer experience than a generic popup?
 
-The model selects data and modes. React controls execution.
+The model may select one primary and up to two supporting modes. It may not choose arbitrary components, animation, layout measurements, CSS, or executable code.
 
-Suggested registry:
+## 12. Controlled component registry
 
-```ts
-const adaptationRegistry = {
-  focus: FocusReader,
-  "plain-language": PlainLanguagePanel,
-  "visual-stepper": VisualStepper,
-  "quiz-support": AdaptiveQuiz,
-} as const;
-```
+React controls execution. The registry may include:
 
-Approved supporting components:
-
+- `StandardReader`
 - `FocusReader`
 - `PlainLanguagePanel`
 - `GlossaryAccordion`
-- `ConceptDiagram`
+- `RequestCycleDiagram`
+- `RetryTimelineDiagram`
+- `RateLimitWindowDiagram`
 - `VisualStepper`
 - `AdaptiveQuiz`
+- `AdaptationNotice`
 - `AdaptationReason`
-- `ResetViewButton`
+- `ShowOriginalControl`
 - `PauseTelemetryControl`
+- `ResetViewButton`
 
-Do not evaluate model-generated JSX, scripts, HTML, styles, or Tailwind class strings.
+Unknown modes and invalid plans must use a safe fallback. Never use `eval`, `Function`, dynamic script injection, runtime JSX compilation, or `dangerouslySetInnerHTML` for model output.
 
-## 12. System architecture
+## 13. System architecture
 
 ```text
 Dense Documentation Fixture
-          |
-          v
-Documentation Reader UI
-          |
-          v
+        ↓
+Baseline Reader + Adaptive Assistance Preference
+        ↓
 Client Telemetry Aggregator
-          |
-          v
+        ↓
 Deterministic Friction Classifier
-          |
-     eligible?
-       /   \
-     no     yes
-     |       |
-     v       v
- baseline  POST /api/adapt
-               |
-               v
-        GPT-5.6 Structured Output
-               |
-               v
-          Zod Validation
-          /          \
-      valid          invalid/error
-        |                 |
-        v                 v
-Adaptation Registry   Local Fallback Plan
-        |                 |
-        +--------v--------+
-             Morphed UI
-```
-
-## 13. Suggested implementation structure
-
-```text
-src/
-  app/
-    api/
-      adapt/
-        route.ts
-    page.tsx
-  components/
-    reader/
-      DocumentationReader.tsx
-      TableOfContents.tsx
-      CodeExample.tsx
-    adaptive/
-      FocusReader.tsx
-      PlainLanguagePanel.tsx
-      GlossaryAccordion.tsx
-      ConceptDiagram.tsx
-      VisualStepper.tsx
-      AdaptiveQuiz.tsx
-      AdaptationReason.tsx
-    controls/
-      PauseTelemetryControl.tsx
-      ResetViewButton.tsx
-  content/
-    demo-document.ts
-  hooks/
-    useReadingTelemetry.ts
-  lib/
-    ai/
-      adaptation-prompt.ts
-      openai.ts
-    adaptation/
-      registry.ts
-      fallback-plan.ts
-    contracts/
-      adaptation.ts
-      telemetry.ts
-    telemetry/
-      classify-friction.ts
-      thresholds.ts
-  test/
+        ↓ eligible
+Adaptation Offer / Consent
+        ↓ accepted or auto-enabled
+POST /api/adapt
+        ↓
+GPT-5.6 Structured Output
+        ↓
+Zod Validation
+   ┌────┴────┐
+ valid     invalid/error
+   ↓           ↓
+Registry   Local Fallback Plan
+   └─────┬─────┘
+      Morphed UI
+        ↓
+Recovery + Restore Original
 ```
 
 ## 14. Demo content
 
-Use one curated technical topic that is understandable to judges within seconds.
+Use one local fixture: **How API rate limiting and exponential backoff work**.
 
-Recommended lesson:
+It must include:
 
-**How API rate limiting and exponential backoff work**
-
-Why it works:
-
-- It naturally includes jargon.
-- It supports code examples.
-- It can be visualized as request bursts, limits, retries, and increasing wait times.
-- It supports a simple micro-quiz.
-- It is technical without requiring a full coding environment.
-
-The source fixture should contain:
-
-- One dense introduction
-- A rate-limit definition
-- A `429 Too Many Requests` explanation
-- A short exponential-backoff code example
-- A paragraph about jitter
-- One baseline comprehension question
+- Dense introduction
+- Rate-limit definition
+- `429 Too Many Requests`
+- Rate-limit headers
+- Exponential-backoff code example
+- Jitter explanation
+- Request/retry diagram opportunity
+- Baseline comprehension question
 
 ## 15. Accessibility and learner control
 
-Required controls:
+Required:
 
-- Pause or resume interaction tracking
-- Reset to original document
-- Show original wording
-- Dismiss an adaptation
 - Keyboard access to every interactive element
 - Visible focus indicators
+- No reliance on color alone
 - Reduced-motion support
+- Text alternatives for diagrams
+- Controls available at 200% zoom
+- Preserved section position and focus after morph and reset
+- Pause, dismiss, show original, and reset controls
 
-The learner must never be trapped in the adapted state.
+The learner must never be trapped in an adapted state.
 
 ## 16. AI failure behavior
 
 When the AI request fails, times out, or returns invalid data:
 
-- Do not show a broken panel.
-- Use a local fallback plan tied to the classifier reason codes.
-- Display a quiet status message.
-- Keep the original document available.
-- Allow retry, but do not loop automatically.
+- Use a complete deterministic fallback plan tied to reason codes
+- Keep the original document available
+- Display a quiet status message
+- Allow manual retry without an automatic loop
+- Preserve learner controls and source identity
 
 ## 17. Testing strategy
 
-### Unit tests
+### Unit and component tests
 
-- Telemetry aggregation
-- Friction scoring
-- Threshold transitions
+- Telemetry aggregation and cleanup
+- Friction scores, thresholds, recovery, and recommendations
 - Zod schemas
 - Fallback-plan selection
-- Registry mode selection
+- Registry composition
+- Adaptation notice and consent choices
+- Pause, dismiss, show-original, and reset controls
+- Diagram text alternatives
+- Reduced-motion behavior
 
-### Component tests
+### Mandatory end-to-end test
 
-- Adaptation controls
-- Glossary accordion
-- Quiz behavior
-- Reset behavior
-- Reduced-motion mode
-
-### End-to-end demo test
-
-1. Open the dense document.
-2. Trigger the configured friction sequence.
-3. Confirm adaptation request fires once.
-4. Confirm the adapted view renders.
-5. Complete the quiz.
-6. Confirm recovery state.
-7. Reset to baseline.
-8. Repeat with the AI route disabled and verify fallback.
+1. Open dense documentation.
+2. Trigger genuine or labeled demo friction through the shared telemetry path.
+3. Confirm classifier reason codes.
+4. Confirm adaptation offer or authorized auto-transition.
+5. Confirm one API request.
+6. Confirm primary and supporting modes render.
+7. Complete the knowledge check.
+8. Confirm recovery and original-view restoration.
+9. Repeat with the API disabled and verify fallback.
+10. Verify mobile and keyboard-only behavior.
 
 ## 18. Definition of MVP success
 
-The project is ready for submission when:
+The project is submission-ready when:
 
-- The dense baseline document is visually convincing.
-- The friction sequence can be demonstrated reliably.
-- The classifier produces explainable reason codes.
+- The baseline is visually convincing.
+- The morph includes presentation, instructional, and interaction adaptation.
+- Telemetry and classification are explainable and privacy-safe.
 - GPT-5.6 returns validated structured content.
-- The interface transformation is immediate and dramatic.
-- The learner can understand and reverse the adaptation.
-- The app remains functional when the AI endpoint fails.
-- The app is deployed and usable through a public URL.
-- The README documents Codex and GPT-5.6 contributions.
+- The fallback produces a complete usable adaptation.
+- The learner can understand, decline, pause, dismiss, reverse, and reset adaptations.
+- The public deployment runs the complete demo journey.
+- The README accurately documents Codex, GPT-5.6, privacy, testing, fallback, and limitations.

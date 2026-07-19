@@ -13,14 +13,15 @@ The MVP must demonstrate one complete journey:
 1. A learner opens dense API documentation.
 2. The learner shows observable friction, such as repeated highlighting, rapid scroll reversals, long jargon hover dwell, inactivity, or repeated quiz errors.
 3. The app classifies the friction using deterministic rules.
-4. GPT-5.6 returns a schema-validated adaptation plan.
-5. The UI morphs through approved components into a simplified, focused view.
-6. The learner completes a micro-quiz or advances through the material.
-7. The app explains the adaptation and allows the learner to reset or pause it.
+4. The learner receives an adaptation offer unless automatic assistance was explicitly enabled.
+5. GPT-5.6 returns a schema-validated adaptation plan.
+6. The UI morphs through approved components into a simplified, focused view.
+7. The learner completes a micro-quiz or advances through the material.
+8. The app explains the adaptation and allows the learner to dismiss, pause, show original, or reset it.
 
 ## Architecture guardrails
 
-- Do not execute arbitrary model-generated JavaScript, React, HTML, CSS, or Tailwind classes.
+- Do not execute arbitrary model-generated JavaScript, React, HTML, CSS, Tailwind classes, shell commands, or executable code.
 - The model must return structured data validated on the server with Zod.
 - Render adaptations through a controlled registry of approved React components and presets.
 - Keep OpenAI API calls in server-only routes. Never expose API keys or secrets to the client.
@@ -32,20 +33,39 @@ The MVP must demonstrate one complete journey:
 ## Responsible telemetry rules
 
 - Collect only interaction summaries required for the demo.
-- Never record raw keystrokes, clipboard contents, full browsing history, camera data, microphone data, biometric data, or medical information.
+- Never record raw keystrokes, clipboard contents, full browsing history, camera data, microphone data, biometric data, wallet data, identity data, or medical information.
 - Do not label or diagnose emotions, ADHD, dyslexia, disability, stress, or mental state.
 - Use terms such as `reading friction`, `support state`, `possible confusion`, and `learning-state signal`.
 - Prefer local aggregation in the browser. Send only compact numeric summaries to the server.
 - Make adaptation visible and reversible. Include controls to pause telemetry, reset the view, and return to the original document.
+- Genuine and demo telemetry must use the same shared contract and state path.
+
+## Dynamic adaptation UX rules
+
+- A dynamic adaptation must change presentation, instruction, or interaction—not only color or font size.
+- Every adaptation must preserve the source content, source-section identity, reading position, and keyboard focus.
+- The learner must be able to dismiss, pause, reset, and view the original text.
+- Do not unexpectedly rearrange the interface unless adaptive assistance has been enabled.
+- When automatic assistance is not enabled, show an `Adapt now` or `Stay in standard view` choice before morphing.
+- Respect `prefers-reduced-motion`; motion must never be required to understand the content.
+- Adaptation modes must come from the approved enum in `DESIGN.md`.
+- One plan may select one primary mode and no more than two supporting modes.
+- Do not stack every adaptive component onto the screen. The result must remain coherent and calm.
+- The model supplies structured content; React controls layout, transitions, component selection, and execution.
+- The model may not choose CSS classes, animation values, arbitrary component names, or layout measurements.
+- Demo mode must enter through the same telemetry, classifier, consent, API, registry, and recovery state machine as genuine telemetry.
+- Every diagram must have a text alternative.
+- Every adaptation must include a plain-language reason.
 
 ## UX and accessibility rules
 
-- Meet keyboard, focus, contrast, semantic HTML, and reduced-motion expectations.
+- Meet keyboard, focus, contrast, semantic HTML, 200% zoom, and reduced-motion expectations.
 - Do not rely on color alone to communicate state.
 - Preserve the learner's place in the document when the layout changes.
 - Avoid surprise audio. Audio is outside the MVP.
 - The adapted view should reduce cognitive load without infantilizing the learner.
 - Every adaptation must include a plain-language reason, for example: `We simplified this section because you revisited it several times.`
+- The learner must never be trapped in an adapted state.
 
 ## Engineering conventions
 
@@ -99,9 +119,13 @@ For UI work, verify at minimum:
 
 - Keyboard-only navigation
 - Mobile and desktop layouts
+- 200% zoom
 - Reduced-motion behavior
 - Baseline-to-adapted transition
-- Reset and pause controls
+- Adaptation offer and decline path
+- Reset, dismiss, show-original, and pause controls
+- Scroll and focus restoration
+- Diagram text alternatives
 - AI failure fallback
 
 ## Git and pull-request expectations
@@ -116,4 +140,4 @@ For UI work, verify at minimum:
 
 ## Definition of done
 
-A task is complete only when its acceptance criteria are met, TypeScript and lint checks pass, relevant tests pass, the UI has been manually exercised where applicable, and the implementation preserves the privacy and architecture guardrails above.
+A task is complete only when its acceptance criteria are met, TypeScript and lint checks pass, relevant tests pass, the UI has been manually exercised where applicable, and the implementation preserves the privacy, accessibility, learner-control, and architecture guardrails above.
