@@ -45,8 +45,9 @@ The MVP must demonstrate one complete journey:
 - A dynamic adaptation must change presentation, instruction, or interaction—not only color or font size.
 - Every adaptation must preserve the source content, source-section identity, reading position, and keyboard focus.
 - The learner must be able to dismiss, pause, reset, and view the original text.
-- Keep an explicit assistance consent mode: the default manual-offer mode must show an `Adapt now` or `Stay in standard view` choice before morphing, while automatic mode requires explicit learner opt-in and a short visible notice.
-- Do not let assistance consent change deterministic friction eligibility; it determines the post-eligibility transition path only.
+- Keep assistance consent separate from telemetry status. Pausing telemetry stops collection immediately but does not disable manual help.
+- Use explicit assistance consent modes: `offer` is the default and shows `Adapt now` or `Stay in standard view`; `automatic` requires explicit opt-in and a visible, cancellable notice with `Stay in standard view`; `manual-only` has no proactive UI transition.
+- Consent controls the post-eligibility transition path only; it must not change deterministic friction scoring or eligibility.
 - Respect `prefers-reduced-motion`; motion must never be required to understand the content.
 - Adaptation modes must come from the approved enum in `DESIGN.md`.
 - One plan may select one primary mode and no more than two supporting modes.

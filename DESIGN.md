@@ -82,26 +82,13 @@ Dynamic must never mean chaotic. One plan may contain one primary mode and no mo
 
 ## 6. Consent and transition behavior
 
-Onboarding records an explicit `AssistanceConsentMode`: `"offer"` is the default manual path, and `"automatic"` is an opt-in automatic path. This preference controls **how** an eligible episode transitions; it does not control whether the deterministic classifier can identify the episode as eligible.
+Onboarding records an explicit `AssistanceConsentMode`. It controls the transition after a deterministic assessment becomes eligible; it never changes the friction score or classifier eligibility.
 
-```text
-Reading friction detected
-        ↓
-Deterministic assessment is eligible
-        ↓
-AssistanceConsentMode
-   ┌────┴───────┐
- "offer"    "automatic"
-   ↓             ↓
-Adaptation     Short visible
-notice         adaptation notice
-   ↓             ↓
-Learner may    Adaptation requested
-adapt now or          ↓
-remain standard Controlled UI transition
-   ↓                   ↓
-Adaptation requested Why this changed / Show original / Pause / Reset
-```
+- `"offer"` is the default: show **Adapt now** and **Stay in standard view**.
+- `"automatic"` requires explicit onboarding opt-in: show a visible, cancellable notice with **Stay in standard view** before requesting adaptation.
+- `"manual-only"` shows no proactive offer and never transitions automatically. The learner may still select **Help me with this section**.
+
+Pausing telemetry stops collection immediately. Telemetry status is separate from assistance consent, and **Help me with this section** remains available while telemetry is paused.
 
 Recommended manual-offer notice:
 
@@ -109,7 +96,11 @@ Recommended manual-offer notice:
 >
 > **Adapt now** · **Stay in standard view**
 
-The automatic path is permitted only after the learner explicitly selects `"automatic"` during onboarding. It must show a short visible notice before requesting an adaptation; learner controls remain available in every adapted state.
+Recommended automatic notice:
+
+> Polymorph UI is ready to simplify this section based on the assistance setting you chose.
+>
+> **Continue** · **Stay in standard view**
 
 ## 7. Primary user journey
 
@@ -159,19 +150,28 @@ Recovery may be inferred when the learner:
 BASELINE
   → OBSERVING
   → FRICTION_SUSPECTED
-      ├─→ ADAPTATION_OFFERED [consent mode: "offer"]
-      │     ├─→ ADAPTATION_DECLINED → OBSERVING
-      │     └─→ ADAPTATION_REQUESTED
-      └─→ AUTOMATIC_ADAPTATION_NOTICE [consent mode: "automatic"]
-            └─→ ADAPTATION_REQUESTED
-                  ├─→ ADAPTED
-                  └─→ FALLBACK_ADAPTED
-                        ↓
-                    RECOVERING
-                        ↓
-                     RECOVERED
-                        ↓
-                     BASELINE
+      ├─ offer
+      │    → ADAPTATION_OFFERED
+      │         ├─ ADAPTATION_DECLINED → OBSERVING
+      │         └─ ADAPTATION_REQUESTED
+      │
+      ├─ automatic
+      │    → AUTOMATIC_ADAPTATION_NOTICE
+      │         ├─ AUTOMATIC_ADAPTATION_DECLINED → OBSERVING
+      │         └─ ADAPTATION_REQUESTED
+      │
+      └─ manual-only
+           → OBSERVING with no proactive UI transition
+
+ADAPTATION_REQUESTED
+  ├─→ ADAPTED
+  └─→ FALLBACK_ADAPTED
+        ↓
+    RECOVERING
+        ↓
+     RECOVERED
+        ↓
+     BASELINE
 ```
 
 The app must not call the AI endpoint for every browser event. Local deterministic rules decide when an episode is eligible.
@@ -193,13 +193,19 @@ export type ReasonCode =
   | "INACTIVITY"
   | "QUIZ_RETRY";
 
-export type AssistanceConsentMode = "offer" | "automatic";
+export type AssistanceConsentMode = "offer" | "automatic" | "manual-only";
+
+export type TelemetryStatus = "collecting" | "paused";
+
+export type AssistancePreferences = {
+  consentMode: AssistanceConsentMode;
+  telemetryStatus: TelemetryStatus;
+};
 
 export type ReadingTelemetry = {
   episodeId: string;
   sectionId: string;
   activeSectionAnchor: string;
-  assistanceConsentMode: AssistanceConsentMode;
   source: "genuine" | "demo";
   selectionRepeatCount: number;
   scrollReversalCount: number;
@@ -215,16 +221,26 @@ export type FrictionAssessment = {
   state: "steady" | "possible-confusion" | "high-friction" | "recovering";
   score: number;
   reasonCodes: ReasonCode[];
-  // Evidence-based only: consent mode never changes classifier eligibility.
   eligibleForAdaptation: boolean;
   recommendedModes: AdaptationMode[];
 };
 
-export type AdaptationTransition = {
-  episodeId: string;
-  consentMode: AssistanceConsentMode;
-  route: "adaptation-offer" | "automatic-notice";
-};
+export type AdaptationTransition =
+  | {
+      episodeId: string;
+      consentMode: "offer";
+      route: "adaptation-offer";
+    }
+  | {
+      episodeId: string;
+      consentMode: "automatic";
+      route: "automatic-adaptation-notice";
+    }
+  | {
+      episodeId: string;
+      consentMode: "manual-only";
+      route: "observe-without-proactive-ui";
+    };
 
 export type AdaptationPlan = {
   sourceSectionId: string;
@@ -292,7 +308,7 @@ Starting thresholds:
 - 3–5: possible confusion
 - 6+: high friction and eligible for adaptation
 
-`eligibleForAdaptation` is based only on these deterministic evidence thresholds. After eligibility, `assistanceConsentMode: "offer"` routes to `ADAPTATION_OFFERED`; `assistanceConsentMode: "automatic"` routes to `AUTOMATIC_ADAPTATION_NOTICE` and then requests an adaptation. A declined offer returns to observation without changing classifier eligibility.
+`eligibleForAdaptation` is determined only by these deterministic evidence thresholds. After eligibility, `AssistanceConsentMode` selects the transition route: `"offer"` presents an offer, `"automatic"` presents a cancellable notice, and `"manual-only"` continues observation without proactive UI. Consent never changes the friction score or eligibility.
 
 Possible deterministic recommendations:
 
@@ -338,15 +354,18 @@ Unknown modes and invalid plans must use a safe fallback. Never use `eval`, `Fun
 ```text
 Dense Documentation Fixture
         ↓
-Baseline Reader + Assistance Consent Mode
+Baseline Reader + Assistance Preferences
         ↓
-Client Telemetry Aggregator
+Client Telemetry Aggregator (collecting only)
         ↓
 Deterministic Friction Classifier
         ↓ eligible
-Manual Adaptation Offer / Automatic Adaptation Notice
-        ↓ accepted / notice shown
+Offer / Cancellable Automatic Notice / No Proactive UI
+        ↓ accepted or continued
 POST /api/adapt
+
+Help me with this section ───────────────────────→ POST /api/adapt
+(available while telemetry is paused)
         ↓
 GPT-5.6 Structured Output
         ↓
