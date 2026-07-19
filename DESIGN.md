@@ -1,173 +1,154 @@
 # Polymorph UI — MVP Design Specification
 
-## 1. Product summary
+## 1. Product and demo
 
 Polymorph UI is an adaptive technical-learning interface that recognizes observable reading friction and transforms dense documentation into a clearer, focused, interactive experience while preserving learner agency, privacy, and access to the original material.
 
-### Chosen use case
+The MVP uses one local lesson: **How API rate limiting and exponential backoff work**. It includes dense documentation, `429 Too Many Requests`, rate-limit headers, exponential-backoff code, jitter, glossary terms, a progress marker, a diagram opportunity, and a baseline knowledge check.
 
-**Self-Pacing Complex Documentation Reader**
+The three-minute demo must show:
 
-The learner reads a dense API-documentation lesson about rate limiting and exponential backoff. When privacy-safe interaction summaries indicate that progress has slowed, Polymorph UI offers a controlled adaptation rather than forcing the learner to continue inside the same static layout.
+1. Dense documentation.
+2. Observable friction classified by deterministic rules.
+3. A learner-controlled offer, cancellable automatic notice, or no proactive transition.
+4. A direct `Help me with this section` path that also works while telemetry is paused.
+5. A GPT-5.6 structured adaptation plan validated with Zod.
+6. A controlled React transformation across presentation, instruction, and interaction.
+7. A knowledge check, recovery, and restoration of the original position.
 
-## 2. Demo promise
+## 2. Locked decisions
 
-The three-minute demonstration must show one coherent journey:
-
-1. Dense API documentation fills the screen.
-2. The learner revisits a difficult section.
-3. Local deterministic rules identify reading friction and reason codes.
-4. Polymorph UI offers or initiates an approved adaptation.
-5. The interface visibly morphs across presentation, instruction, and interaction.
-6. The learner completes a micro-quiz or advances successfully.
-7. The interface enters recovery and can restore the original document and position.
-
-The transformation must be visually dramatic but technically controlled.
-
-## 3. Locked MVP decisions
-
-- Education track
-- Technical-documentation reader
-- API rate-limiting and exponential-backoff lesson
 - Next.js App Router, React, strict TypeScript, Tailwind CSS, npm
 - Public no-login demo
-- No authentication, database, persistent learner profiling, or arbitrary uploads
-- No medical, psychological, disability, or emotion diagnosis
+- No authentication, database, persistent learner profile, or arbitrary uploads
+- No medical, psychological, disability, emotion, or ability diagnosis
 - No raw keystrokes, clipboard capture, camera, microphone, biometrics, or browsing history
-- No arbitrary model-generated React, JavaScript, HTML, CSS, Tailwind classes, or executable code
-- Deterministic friction classifier before any model request
-- GPT-5.6 structured output validated with Zod
-- Controlled React component registry
-- Deterministic fallback when the AI route fails
+- Privacy-safe, session-only telemetry summaries
+- Deterministic classifier before telemetry-triggered model requests
+- Direct learner requests may authorize adaptation without telemetry eligibility
+- Official OpenAI SDK with GPT-5.6 structured output and Zod validation
+- Controlled React component registry; no generated code execution
+- Complete deterministic fallback for telemetry and learner-requested paths
+- One primary adaptation mode and no more than two supporting modes
 
-## 4. Dynamic UX principles
+## 3. Adaptation layers and modes
 
-A meaningful adaptation must change at least one of these layers:
+A meaningful adaptation changes at least one layer:
 
-### Presentation adaptation
+- **Presentation:** collapse secondary navigation, focus the current section, increase spacing, reduce visual competition, and preserve scroll and focus.
+- **Instruction:** explain terminology, provide plain language, render an approved diagram, break the concept into steps, or provide a grounded knowledge check.
+- **Interaction:** present one action at a time, compare original and adapted content, explain the change, and allow dismiss, pause, reset, and restoration.
 
-- Collapse secondary navigation
-- Focus one source section
-- Increase spacing and reduce visual competition
-- Emphasize the active paragraph
-- Preserve scroll position and keyboard focus
+Approved modes:
 
-### Instructional adaptation
+| Mode                | Purpose                                                 |
+| ------------------- | ------------------------------------------------------- |
+| Standard            | Full document, navigation, code, and supporting details |
+| Focus               | One active section with reduced clutter                 |
+| Plain Language      | Shorter explanation with expandable terminology         |
+| Visual Map          | Approved request, rate-limit, or retry diagram          |
+| Step-by-Step        | Ordered stages with one immediate action                |
+| Check Understanding | One short question with corrective explanation          |
 
-- Provide a plain-language explanation
-- Expand technical terminology
-- Render an approved visual map
-- Break the concept into numbered steps
-- Provide a grounded knowledge check
+## 4. Consent and telemetry
 
-### Interaction adaptation
-
-- Present one action or stage at a time
-- Allow original-versus-adapted comparison
-- Explain why the adaptation occurred
-- Allow immediate dismissal, pause, reset, and restoration
-
-Dynamic must never mean chaotic. One plan may contain one primary mode and no more than two supporting modes.
-
-## 5. Approved modes
-
-| Mode                | Visible transformation                                       |
-| ------------------- | ------------------------------------------------------------ |
-| Standard            | Full documentation, navigation, code, and supporting details |
-| Focus               | One active section, reduced clutter, stronger spacing        |
-| Plain Language      | Simplified explanation and expandable terminology            |
-| Visual Map          | Diagram showing requests, 429 response, delay, and retry     |
-| Step-by-Step        | Numbered concept sequence with one stage emphasized          |
-| Check Understanding | One short question with corrective explanation               |
-
-## 6. Consent and transition behavior
-
-```text
-Adaptive assistance enabled
-        ↓
-Reading friction detected
-        ↓
-Adaptation notice appears
-        ↓
-Learner may adapt now or remain in standard mode
-        ↓
-Controlled UI transition
-        ↓
-Why this changed / Show original / Pause / Reset
+```ts
+export type AssistanceConsentMode = "offer" | "automatic" | "manual-only";
+export type TelemetryStatus = "active" | "paused";
 ```
 
-Recommended notice:
+| Consent mode  | Learner-facing meaning             | Proactive behavior                                              |
+| ------------- | ---------------------------------- | --------------------------------------------------------------- |
+| `offer`       | Ask before changing                | Show `Adapt now` and `Stay in standard view`                    |
+| `automatic`   | Adapt automatically after a notice | Show a visible, cancellable notice before requesting adaptation |
+| `manual-only` | Only adapt when I ask              | Show no proactive offer or transition                           |
 
-> This section has been revisited several times. Polymorph UI can simplify the presentation while keeping the original material available.
->
-> **Adapt now** · **Stay in standard view**
+`offer` is the default. `automatic` requires explicit opt-in. The automatic notice must provide `Stay in standard view` before any API request.
 
-If automatic assistance was explicitly enabled during onboarding, the demo may transition automatically after a short visible notice. Learner controls must remain available in every adapted state.
+Telemetry status is independent of consent. Pausing telemetry stops collection immediately but never disables `Help me with this section`.
 
-## 7. Primary user journey
+## 5. Decline suppression
 
-### Baseline
+A decline must prevent prompt loops while retained telemetry remains eligible.
 
-- Dense API-documentation article
-- Table of contents
-- Inline code example
-- Technical vocabulary
-- Progress indicator
-- Baseline comprehension question
-- Adaptive-assistance onboarding control
+```ts
+export type ProactiveAssistanceGate = {
+  declinedEpisodeIds: string[];
+  declineCount: number;
+  cooldownUntil: string | null;
+  disabledForSession: boolean;
+};
 
-### Observable friction
+export type AssistancePreferences = {
+  consentMode: AssistanceConsentMode;
+  telemetryStatus: TelemetryStatus;
+  proactiveGate: ProactiveAssistanceGate;
+};
+```
 
-The demo may use genuine or clearly labeled simulated signals:
+MVP rules:
 
-- Repeated selection of the same section
-- Multiple scroll-direction reversals
-- Extended hover or keyboard focus on a glossary term
-- Inactivity while the difficult section is visible
-- Repeated incorrect quiz attempts
+1. A declined `episodeId` is suppressed for the remainder of the session.
+2. The first decline starts a five-minute proactive cooldown.
+3. The second decline disables proactive offers and automatic notices for the session.
+4. A new section does not override a session-level disable.
+5. Manual help remains available during cooldown and after proactive support is disabled.
+6. A new browser session resets this session-only state.
 
-### Adapted state
+The gate is checked after deterministic eligibility and before consent routing. It never changes the classifier score or `eligibleForAdaptation`.
 
-- Secondary navigation may collapse
-- The current source section remains anchored
-- Plain-language explanation appears
-- Glossary definitions become expandable
-- One approved visual diagram appears
-- The concept can become step-by-step
-- A short knowledge check confirms understanding
-- `Why this changed`, `Show original`, `Pause`, `Dismiss`, and `Reset` remain available
+## 6. Manual help
 
-### Recovery
+`Help me with this section` is direct learner authorization. It bypasses telemetry collection, classifier eligibility, consent routing, cooldowns, and proactive suppression. It does not bypass grounding, schema validation, safety controls, or fallback behavior.
 
-Recovery may be inferred when the learner:
+```ts
+export type ManualHelpRequest = {
+  requestId: string;
+  sectionId: string;
+  activeSectionAnchor: string;
+  sourceSectionText: string;
+  requestedMode?: AdaptationMode;
+  requestedAt: string;
+};
+```
 
-- Completes the knowledge check correctly
-- Advances to the next section
-- Stops generating repeated friction signals
-- Chooses to return to standard view
+The learner-requested route must work when telemetry is paused, consent is `manual-only`, or proactive support is disabled. If no mode is selected or the AI fails, the deterministic default is `focus` plus `plain-language`. This is a product default, not a friction diagnosis.
 
-## 8. State model
+## 7. State model
 
 ```text
 BASELINE
   → OBSERVING
   → FRICTION_SUSPECTED
-  → ADAPTATION_OFFERED
-      ├─→ ADAPTATION_DECLINED → OBSERVING
-      └─→ ADAPTATION_REQUESTED
-            ├─→ ADAPTED
-            └─→ FALLBACK_ADAPTED
-                  ↓
-              RECOVERING
-                  ↓
-               RECOVERED
-                  ↓
-               BASELINE
+      → PROACTIVE_GATE_CHECK
+          ├─→ PROACTIVE_SUPPRESSED → OBSERVING
+          ├─→ ADAPTATION_OFFERED [offer]
+          │     ├─→ ADAPTATION_DECLINED → RECORD_DECLINE → OBSERVING
+          │     └─→ ADAPTATION_REQUESTED
+          ├─→ AUTOMATIC_ADAPTATION_NOTICE [automatic]
+          │     ├─→ AUTOMATIC_ADAPTATION_DECLINED
+          │     │     → RECORD_DECLINE → OBSERVING
+          │     └─→ ADAPTATION_REQUESTED
+          └─→ OBSERVING [manual-only]
+
+ANY_STANDARD_OR_OBSERVING_STATE
+  → MANUAL_HELP_REQUESTED
+  → ADAPTATION_REQUESTED
+
+ADAPTATION_REQUESTED
+  ├─→ ADAPTED
+  └─→ FALLBACK_ADAPTED
+          ↓
+      RECOVERING
+          ↓
+       RECOVERED
+          ↓
+       BASELINE
 ```
 
-The app must not call the AI endpoint for every browser event. Local deterministic rules decide when an episode is eligible.
+Telemetry events cannot call the AI directly. An eligible telemetry episode must pass the proactive gate and consent route. A direct learner request is separately authorized and does not require a friction assessment.
 
-## 9. Shared contracts
+## 8. Shared contracts
 
 ```ts
 export type AdaptationMode =
@@ -188,7 +169,6 @@ export type ReadingTelemetry = {
   episodeId: string;
   sectionId: string;
   activeSectionAnchor: string;
-  adaptiveAssistanceEnabled: boolean;
   source: "genuine" | "demo";
   selectionRepeatCount: number;
   scrollReversalCount: number;
@@ -208,12 +188,49 @@ export type FrictionAssessment = {
   recommendedModes: AdaptationMode[];
 };
 
+export type AdaptationRequestContext =
+  | {
+      authorization: "telemetry-consent";
+      assessment: FrictionAssessment;
+      sourceSectionId: string;
+      sourceSectionText: string;
+    }
+  | {
+      authorization: "learner-request";
+      manualRequest: ManualHelpRequest;
+      fallbackModes: AdaptationMode[];
+    };
+
+export type AdaptationTransition =
+  | {
+      route: "adaptation-offer";
+      episodeId: string;
+      consentMode: "offer";
+    }
+  | {
+      route: "automatic-notice";
+      episodeId: string;
+      consentMode: "automatic";
+    }
+  | {
+      route: "no-proactive-transition";
+      episodeId: string;
+      consentMode: "manual-only";
+    }
+  | {
+      route: "learner-request";
+      request: ManualHelpRequest;
+      consentMode: AssistanceConsentMode;
+      telemetryStatus: TelemetryStatus;
+    };
+```
+
+```ts
 export type AdaptationPlan = {
   sourceSectionId: string;
   frictionState: FrictionAssessment["state"];
   primaryMode: AdaptationMode;
   supportingModes: AdaptationMode[];
-
   presentation: {
     density: "standard" | "reduced";
     hideSecondaryNavigation: boolean;
@@ -221,32 +238,25 @@ export type AdaptationPlan = {
     increaseSpacing: boolean;
     preserveScrollPosition: true;
   };
-
   instructionalSupport: {
     heading: string;
     explanation: string;
-    glossary: Array<{
-      term: string;
-      definition: string;
-    }>;
+    glossary: Array<{ term: string; definition: string }>;
     steps: string[];
     analogy?: string;
     diagramType:
       "request-cycle" | "retry-timeline" | "rate-limit-window" | "none";
   };
-
   knowledgeCheck?: {
     question: string;
     options: string[];
     correctIndex: number;
     explanation: string;
   };
-
   transparency: {
     reasonSummary: string;
     reasonCodes: ReasonCode[];
   };
-
   controls: {
     allowDismiss: true;
     allowReset: true;
@@ -256,9 +266,9 @@ export type AdaptationPlan = {
 };
 ```
 
-All client and server boundaries must use Zod schemas derived from these concepts. Invalid output must never reach the renderer.
+All client/server boundaries use Zod schemas. Invalid output never reaches the renderer.
 
-## 10. Deterministic classifier
+## 9. Deterministic classifier
 
 Starting weights:
 
@@ -268,33 +278,25 @@ Starting weights:
 - Inactivity over 30 seconds: +1
 - Repeated quiz failure: +3
 
-Starting thresholds:
+Thresholds:
 
 - 0–2: steady
 - 3–5: possible confusion
-- 6+: high friction and eligible when adaptive assistance is enabled
+- 6+: high friction and eligible for adaptation
 
-Possible deterministic recommendations:
+Eligibility is based only on evidence. Consent and decline state affect routing, not scoring. Example recommendations:
 
-- Repeated selection + jargon dwell → plain-language or visual-map
-- Scroll reversals + inactivity → focus or step-by-step
-- Repeated quiz failures → check-understanding plus plain-language
+- Selection plus jargon dwell → plain-language or visual-map
+- Scroll reversals plus inactivity → focus or step-by-step
+- Repeated quiz errors → check-understanding plus plain-language
 
 These are product rules for the demo, not scientific or diagnostic claims.
 
-## 11. Strategic adaptation filter
+## 10. AI and rendering boundary
 
-The server prompt reasons through three questions while returning only the schema:
+The server may reason over either a telemetry assessment or a direct learner request. It returns only the validated `AdaptationPlan`.
 
-1. **Observed need:** What does the supplied assessment indicate about where progress slowed?
-2. **Instructional tension:** How can support be useful without simply giving away the lesson?
-3. **High-impact response:** Which approved modes produce a clearer experience than a generic popup?
-
-The model may select one primary and up to two supporting modes. It may not choose arbitrary components, animation, layout measurements, CSS, or executable code.
-
-## 12. Controlled component registry
-
-React controls execution. The registry may include:
+The model may not choose arbitrary components, code, HTML, CSS, Tailwind classes, animation values, or layout measurements. React renders through an approved registry that may include:
 
 - `StandardReader`
 - `FocusReader`
@@ -311,112 +313,99 @@ React controls execution. The registry may include:
 - `PauseTelemetryControl`
 - `ResetViewButton`
 
-Unknown modes and invalid plans must use a safe fallback. Never use `eval`, `Function`, dynamic script injection, runtime JSX compilation, or `dangerouslySetInnerHTML` for model output.
+Unknown modes and invalid plans use a deterministic fallback. Never use `eval`, `Function`, dynamic script injection, runtime JSX compilation, or `dangerouslySetInnerHTML` for model output.
 
-## 13. System architecture
+## 11. System architecture
 
 ```text
 Dense Documentation Fixture
         ↓
-Baseline Reader + Adaptive Assistance Preference
-        ↓
-Client Telemetry Aggregator
-        ↓
-Deterministic Friction Classifier
-        ↓ eligible
-Adaptation Offer / Consent
-        ↓ accepted or auto-enabled
-POST /api/adapt
-        ↓
-GPT-5.6 Structured Output
-        ↓
-Zod Validation
-   ┌────┴────┐
- valid     invalid/error
-   ↓           ↓
-Registry   Local Fallback Plan
-   └─────┬─────┘
-      Morphed UI
-        ↓
-Recovery + Restore Original
+Baseline Reader + Preferences + Manual Help
+        ├────────────────────────────────────┐
+        ↓                                    ↓
+Active telemetry                     Learner requests help
+        ↓                                    ↓
+Local aggregator                     ManualHelpRequest
+        ↓                                    ↓
+Classifier                           Direct authorization
+        ↓ eligible                            │
+Proactive gate                               │
+        ↓ open                                │
+Consent router                               │
+        ↓ authorized                         │
+        └────────────────┬───────────────────┘
+                         ↓
+                  POST /api/adapt
+                         ↓
+             GPT-5.6 structured output
+                         ↓
+                   Zod validation
+                 ┌───────┴────────┐
+               valid         invalid/error
+                 ↓                 ↓
+              Registry        Local fallback
+                 └────────┬────────┘
+                      Morphed UI
+                         ↓
+               Recovery + restore original
 ```
 
-## 14. Demo content
-
-Use one local fixture: **How API rate limiting and exponential backoff work**.
-
-It must include:
-
-- Dense introduction
-- Rate-limit definition
-- `429 Too Many Requests`
-- Rate-limit headers
-- Exponential-backoff code example
-- Jitter explanation
-- Request/retry diagram opportunity
-- Baseline comprehension question
-
-## 15. Accessibility and learner control
+## 12. Accessibility and failure behavior
 
 Required:
 
-- Keyboard access to every interactive element
-- Visible focus indicators
+- Keyboard access and visible focus
 - No reliance on color alone
 - Reduced-motion support
 - Text alternatives for diagrams
-- Controls available at 200% zoom
-- Preserved section position and focus after morph and reset
+- Controls usable at 200% zoom
+- Preserved section position and focus
 - Pause, dismiss, show original, and reset controls
+- Cancellable automatic notice
+- Manual-only option with no proactive UI
+- Manual help while telemetry is paused or proactive support is suppressed
+- Decline suppression that prevents prompt loops
 
-The learner must never be trapped in an adapted state.
+When the AI fails, times out, refuses, or returns invalid data:
 
-## 16. AI failure behavior
-
-When the AI request fails, times out, or returns invalid data:
-
-- Use a complete deterministic fallback plan tied to reason codes
-- Keep the original document available
+- Use a complete deterministic fallback
+- Tie telemetry fallback modes to reason codes
+- Use the requested mode or `focus` plus `plain-language` for manual help
+- Keep original content and learner controls available
 - Display a quiet status message
 - Allow manual retry without an automatic loop
-- Preserve learner controls and source identity
 
-## 17. Testing strategy
+## 13. Required tests
 
-### Unit and component tests
+Unit and component tests must cover:
 
-- Telemetry aggregation and cleanup
-- Friction scores, thresholds, recovery, and recommendations
-- Zod schemas
-- Fallback-plan selection
-- Registry composition
-- Adaptation notice and consent choices
-- Pause, dismiss, show-original, and reset controls
-- Diagram text alternatives
-- Reduced-motion behavior
+- Telemetry aggregation, cleanup, and pause
+- Consent-independent eligibility
+- All three consent routes
+- Manual help while telemetry is paused or consent is `manual-only`
+- Manual fallback context and defaults
+- Automatic-notice decline
+- Same-episode decline suppression
+- Five-minute first-decline cooldown
+- Second-decline session disable
+- Manual help while proactive support is disabled
+- Zod schemas, fallback selection, and registry composition
+- Pause, dismiss, show-original, reset, diagram alternatives, and reduced motion
 
-### Mandatory end-to-end test
+The mandatory end-to-end journey must verify both genuine and labeled demo telemetry, one authorized API request, adaptation rendering, recovery, API-disabled fallback, mobile layout, keyboard-only use, and original-position restoration.
 
-1. Open dense documentation.
-2. Trigger genuine or labeled demo friction through the shared telemetry path.
-3. Confirm classifier reason codes.
-4. Confirm adaptation offer or authorized auto-transition.
-5. Confirm one API request.
-6. Confirm primary and supporting modes render.
-7. Complete the knowledge check.
-8. Confirm recovery and original-view restoration.
-9. Repeat with the API disabled and verify fallback.
-10. Verify mobile and keyboard-only behavior.
+## 14. MVP success
 
-## 18. Definition of MVP success
+The MVP is ready when:
 
-The project is submission-ready when:
-
-- The baseline is visually convincing.
-- The morph includes presentation, instructional, and interaction adaptation.
+- The baseline-to-adapted transformation is convincing.
+- Presentation, instruction, and interaction visibly adapt.
 - Telemetry and classification are explainable and privacy-safe.
+- Evidence eligibility remains independent of consent and decline state.
+- Learners can select offer, cancellable automatic, or manual-only support.
+- Manual help works while telemetry is paused or proactive support is suppressed.
+- Declines cannot create repeated-prompt loops.
 - GPT-5.6 returns validated structured content.
-- The fallback produces a complete usable adaptation.
-- The learner can understand, decline, pause, dismiss, reverse, and reset adaptations.
-- The public deployment runs the complete demo journey.
-- The README accurately documents Codex, GPT-5.6, privacy, testing, fallback, and limitations.
+- Both request paths have complete fallbacks.
+- Learners can understand, decline, pause, dismiss, reverse, and reset adaptations.
+- The public deployment runs the full demo journey.
