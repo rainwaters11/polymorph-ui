@@ -71,14 +71,14 @@ Dynamic must never mean chaotic. One plan may contain one primary mode and no mo
 
 ## 5. Approved modes
 
-| Mode | Visible transformation |
-|---|---|
-| Standard | Full documentation, navigation, code, and supporting details |
-| Focus | One active section, reduced clutter, stronger spacing |
-| Plain Language | Simplified explanation and expandable terminology |
-| Visual Map | Diagram showing requests, 429 response, delay, and retry |
-| Step-by-Step | Numbered concept sequence with one stage emphasized |
-| Check Understanding | One short question with corrective explanation |
+| Mode                | Visible transformation                                       |
+| ------------------- | ------------------------------------------------------------ |
+| Standard            | Full documentation, navigation, code, and supporting details |
+| Focus               | One active section, reduced clutter, stronger spacing        |
+| Plain Language      | Simplified explanation and expandable terminology            |
+| Visual Map          | Diagram showing requests, 429 response, delay, and retry     |
+| Step-by-Step        | Numbered concept sequence with one stage emphasized          |
+| Check Understanding | One short question with corrective explanation               |
 
 ## 6. Consent and transition behavior
 
@@ -201,11 +201,7 @@ export type ReadingTelemetry = {
 
 export type FrictionAssessment = {
   episodeId: string;
-  state:
-    | "steady"
-    | "possible-confusion"
-    | "high-friction"
-    | "recovering";
+  state: "steady" | "possible-confusion" | "high-friction" | "recovering";
   score: number;
   reasonCodes: ReasonCode[];
   eligibleForAdaptation: boolean;
@@ -236,10 +232,7 @@ export type AdaptationPlan = {
     steps: string[];
     analogy?: string;
     diagramType:
-      | "request-cycle"
-      | "retry-timeline"
-      | "rate-limit-window"
-      | "none";
+      "request-cycle" | "retry-timeline" | "rate-limit-window" | "none";
   };
 
   knowledgeCheck?: {
