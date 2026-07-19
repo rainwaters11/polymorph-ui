@@ -6,7 +6,7 @@ model-generated code.
 
 ## Local setup
 
-1. Use Node.js 20.9 or newer.
+1. Use Node.js 20.19 or newer.
 2. Copy the example environment file: `cp .env.example .env.local`.
 3. Add an OpenAI API key to `.env.local` only when a later server-side adaptation feature requires it.
 4. Install dependencies: `npm install`.
