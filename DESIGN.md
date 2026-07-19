@@ -71,38 +71,45 @@ Dynamic must never mean chaotic. One plan may contain one primary mode and no mo
 
 ## 5. Approved modes
 
-| Mode | Visible transformation |
-|---|---|
-| Standard | Full documentation, navigation, code, and supporting details |
-| Focus | One active section, reduced clutter, stronger spacing |
-| Plain Language | Simplified explanation and expandable terminology |
-| Visual Map | Diagram showing requests, 429 response, delay, and retry |
-| Step-by-Step | Numbered concept sequence with one stage emphasized |
-| Check Understanding | One short question with corrective explanation |
+| Mode                | Visible transformation                                       |
+| ------------------- | ------------------------------------------------------------ |
+| Standard            | Full documentation, navigation, code, and supporting details |
+| Focus               | One active section, reduced clutter, stronger spacing        |
+| Plain Language      | Simplified explanation and expandable terminology            |
+| Visual Map          | Diagram showing requests, 429 response, delay, and retry     |
+| Step-by-Step        | Numbered concept sequence with one stage emphasized          |
+| Check Understanding | One short question with corrective explanation               |
 
 ## 6. Consent and transition behavior
 
+Onboarding records an explicit `AssistanceConsentMode`: `"offer"` is the default manual path, and `"automatic"` is an opt-in automatic path. This preference controls **how** an eligible episode transitions; it does not control whether the deterministic classifier can identify the episode as eligible.
+
 ```text
-Adaptive assistance enabled
-        ↓
 Reading friction detected
         ↓
-Adaptation notice appears
+Deterministic assessment is eligible
         ↓
-Learner may adapt now or remain in standard mode
-        ↓
-Controlled UI transition
-        ↓
-Why this changed / Show original / Pause / Reset
+AssistanceConsentMode
+   ┌────┴───────┐
+ "offer"    "automatic"
+   ↓             ↓
+Adaptation     Short visible
+notice         adaptation notice
+   ↓             ↓
+Learner may    Adaptation requested
+adapt now or          ↓
+remain standard Controlled UI transition
+   ↓                   ↓
+Adaptation requested Why this changed / Show original / Pause / Reset
 ```
 
-Recommended notice:
+Recommended manual-offer notice:
 
 > This section has been revisited several times. Polymorph UI can simplify the presentation while keeping the original material available.
 >
 > **Adapt now** · **Stay in standard view**
 
-If automatic assistance was explicitly enabled during onboarding, the demo may transition automatically after a short visible notice. Learner controls must remain available in every adapted state.
+The automatic path is permitted only after the learner explicitly selects `"automatic"` during onboarding. It must show a short visible notice before requesting an adaptation; learner controls remain available in every adapted state.
 
 ## 7. Primary user journey
 
@@ -152,17 +159,19 @@ Recovery may be inferred when the learner:
 BASELINE
   → OBSERVING
   → FRICTION_SUSPECTED
-  → ADAPTATION_OFFERED
-      ├─→ ADAPTATION_DECLINED → OBSERVING
-      └─→ ADAPTATION_REQUESTED
-            ├─→ ADAPTED
-            └─→ FALLBACK_ADAPTED
-                  ↓
-              RECOVERING
-                  ↓
-               RECOVERED
-                  ↓
-               BASELINE
+      ├─→ ADAPTATION_OFFERED [consent mode: "offer"]
+      │     ├─→ ADAPTATION_DECLINED → OBSERVING
+      │     └─→ ADAPTATION_REQUESTED
+      └─→ AUTOMATIC_ADAPTATION_NOTICE [consent mode: "automatic"]
+            └─→ ADAPTATION_REQUESTED
+                  ├─→ ADAPTED
+                  └─→ FALLBACK_ADAPTED
+                        ↓
+                    RECOVERING
+                        ↓
+                     RECOVERED
+                        ↓
+                     BASELINE
 ```
 
 The app must not call the AI endpoint for every browser event. Local deterministic rules decide when an episode is eligible.
@@ -184,11 +193,13 @@ export type ReasonCode =
   | "INACTIVITY"
   | "QUIZ_RETRY";
 
+export type AssistanceConsentMode = "offer" | "automatic";
+
 export type ReadingTelemetry = {
   episodeId: string;
   sectionId: string;
   activeSectionAnchor: string;
-  adaptiveAssistanceEnabled: boolean;
+  assistanceConsentMode: AssistanceConsentMode;
   source: "genuine" | "demo";
   selectionRepeatCount: number;
   scrollReversalCount: number;
@@ -201,15 +212,18 @@ export type ReadingTelemetry = {
 
 export type FrictionAssessment = {
   episodeId: string;
-  state:
-    | "steady"
-    | "possible-confusion"
-    | "high-friction"
-    | "recovering";
+  state: "steady" | "possible-confusion" | "high-friction" | "recovering";
   score: number;
   reasonCodes: ReasonCode[];
+  // Evidence-based only: consent mode never changes classifier eligibility.
   eligibleForAdaptation: boolean;
   recommendedModes: AdaptationMode[];
+};
+
+export type AdaptationTransition = {
+  episodeId: string;
+  consentMode: AssistanceConsentMode;
+  route: "adaptation-offer" | "automatic-notice";
 };
 
 export type AdaptationPlan = {
@@ -236,10 +250,7 @@ export type AdaptationPlan = {
     steps: string[];
     analogy?: string;
     diagramType:
-      | "request-cycle"
-      | "retry-timeline"
-      | "rate-limit-window"
-      | "none";
+      "request-cycle" | "retry-timeline" | "rate-limit-window" | "none";
   };
 
   knowledgeCheck?: {
@@ -279,7 +290,9 @@ Starting thresholds:
 
 - 0–2: steady
 - 3–5: possible confusion
-- 6+: high friction and eligible when adaptive assistance is enabled
+- 6+: high friction and eligible for adaptation
+
+`eligibleForAdaptation` is based only on these deterministic evidence thresholds. After eligibility, `assistanceConsentMode: "offer"` routes to `ADAPTATION_OFFERED`; `assistanceConsentMode: "automatic"` routes to `AUTOMATIC_ADAPTATION_NOTICE` and then requests an adaptation. A declined offer returns to observation without changing classifier eligibility.
 
 Possible deterministic recommendations:
 
@@ -325,14 +338,14 @@ Unknown modes and invalid plans must use a safe fallback. Never use `eval`, `Fun
 ```text
 Dense Documentation Fixture
         ↓
-Baseline Reader + Adaptive Assistance Preference
+Baseline Reader + Assistance Consent Mode
         ↓
 Client Telemetry Aggregator
         ↓
 Deterministic Friction Classifier
         ↓ eligible
-Adaptation Offer / Consent
-        ↓ accepted or auto-enabled
+Manual Adaptation Offer / Automatic Adaptation Notice
+        ↓ accepted / notice shown
 POST /api/adapt
         ↓
 GPT-5.6 Structured Output
