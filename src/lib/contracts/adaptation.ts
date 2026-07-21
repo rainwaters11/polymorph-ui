@@ -38,6 +38,13 @@ export const DIAGRAM_TYPES = [
 
 export type DiagramType = (typeof DIAGRAM_TYPES)[number];
 
+/**
+ * Both request paths hit the same public, no-login endpoint, so the
+ * manual-help source text gets the same cap as the telemetry path to
+ * prevent oversized prompts from either route.
+ */
+export const MAX_SOURCE_SECTION_TEXT_LENGTH = 20000;
+
 export const frictionAssessmentSchema = z.object({
   episodeId: z.string().min(1),
   state: z.enum(FRICTION_STATES),
@@ -53,7 +60,7 @@ export const manualHelpRequestSchema = z.object({
   requestId: z.string().min(1),
   sectionId: z.string().min(1),
   activeSectionAnchor: z.string().min(1),
-  sourceSectionText: z.string().min(1),
+  sourceSectionText: z.string().min(1).max(MAX_SOURCE_SECTION_TEXT_LENGTH),
   requestedMode: z.enum(ADAPTATION_MODES).optional(),
   requestedAt: z.string().min(1),
 });
@@ -67,7 +74,7 @@ export const adaptationRequestContextSchema = z.discriminatedUnion(
       authorization: z.literal("telemetry-consent"),
       assessment: frictionAssessmentSchema,
       sourceSectionId: z.string().min(1),
-      sourceSectionText: z.string().min(1),
+      sourceSectionText: z.string().min(1).max(MAX_SOURCE_SECTION_TEXT_LENGTH),
     }),
     z.object({
       authorization: z.literal("learner-request"),
@@ -160,7 +167,7 @@ export const adaptRequestSchema = z.discriminatedUnion("authorization", [
     authorization: z.literal("telemetry-consent"),
     assessment: frictionAssessmentSchema,
     sourceSectionId: z.string().min(1),
-    sourceSectionText: z.string().min(1).max(20000),
+    sourceSectionText: z.string().min(1).max(MAX_SOURCE_SECTION_TEXT_LENGTH),
   }),
   z.object({
     authorization: z.literal("learner-request"),

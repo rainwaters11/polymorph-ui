@@ -22,7 +22,11 @@ describe("buildFallbackAdaptationPlan", () => {
     const plan = buildFallbackAdaptationPlan(request);
     expect(adaptationPlanSchema.safeParse(plan).success).toBe(true);
     expect(plan.sourceSectionId).toBe("rate-limiting-intro");
-    expect(plan.primaryMode).toBe("check-understanding");
+    // "check-understanding" has no deterministic fallback content (no
+    // knowledgeCheck can be safely generated without the model), so the
+    // fallback downgrades to a mode it can actually render.
+    expect(plan.primaryMode).toBe("plain-language");
+    expect(plan.knowledgeCheck).toBeUndefined();
   });
 
   it("ties fallback modes to reason codes", () => {
@@ -64,11 +68,29 @@ describe("buildFallbackAdaptationPlan", () => {
     expect(adaptationPlanSchema.safeParse(plan).success).toBe(true);
   });
 
-  it("honors an explicit requested mode for manual help", () => {
+  it("honors an explicit requested mode for manual help when renderable", () => {
     const request: AdaptRequest = {
       authorization: "learner-request",
       manualRequest: {
         requestId: "req-2",
+        sectionId: "rate-limiting-intro",
+        activeSectionAnchor: "#intro",
+        sourceSectionText: "Section text.",
+        requestedMode: "step-by-step",
+        requestedAt: new Date().toISOString(),
+      },
+      fallbackModes: ["focus", "plain-language"],
+    };
+
+    const plan = buildFallbackAdaptationPlan(request);
+    expect(plan.primaryMode).toBe("step-by-step");
+  });
+
+  it("downgrades a requested visual-map mode to a renderable fallback", () => {
+    const request: AdaptRequest = {
+      authorization: "learner-request",
+      manualRequest: {
+        requestId: "req-4",
         sectionId: "rate-limiting-intro",
         activeSectionAnchor: "#intro",
         sourceSectionText: "Section text.",
@@ -79,7 +101,9 @@ describe("buildFallbackAdaptationPlan", () => {
     };
 
     const plan = buildFallbackAdaptationPlan(request);
-    expect(plan.primaryMode).toBe("visual-map");
+    expect(plan.primaryMode).not.toBe("visual-map");
+    expect(plan.instructionalSupport.diagramType).toBe("none");
+    expect(adaptationPlanSchema.safeParse(plan).success).toBe(true);
   });
 
   it("always preserves mandatory learner controls", () => {
@@ -102,5 +126,46 @@ describe("buildFallbackAdaptationPlan", () => {
       allowPause: true,
       showOriginalText: true,
     });
+  });
+
+  it("never selects a mode it cannot back with renderable content", () => {
+    const requests: AdaptRequest[] = [
+      {
+        authorization: "telemetry-consent",
+        assessment: {
+          episodeId: "ep-3",
+          state: "high-friction",
+          score: 6,
+          reasonCodes: ["REPEATED_SELECTION", "JARGON_DWELL"],
+          eligibleForAdaptation: true,
+          recommendedModes: [],
+        },
+        sourceSectionId: "section",
+        sourceSectionText: "Section text.",
+      },
+      {
+        authorization: "learner-request",
+        manualRequest: {
+          requestId: "req-5",
+          sectionId: "section",
+          activeSectionAnchor: "#intro",
+          sourceSectionText: "Section text.",
+          requestedMode: "check-understanding",
+          requestedAt: new Date().toISOString(),
+        },
+        fallbackModes: [],
+      },
+    ];
+
+    for (const request of requests) {
+      const plan = buildFallbackAdaptationPlan(request);
+      expect(plan.primaryMode).not.toBe("visual-map");
+      expect(plan.primaryMode).not.toBe("check-understanding");
+      expect(plan.supportingModes).not.toContain("visual-map");
+      expect(plan.supportingModes).not.toContain("check-understanding");
+      expect(plan.instructionalSupport.diagramType).toBe("none");
+      expect(plan.knowledgeCheck).toBeUndefined();
+      expect(adaptationPlanSchema.safeParse(plan).success).toBe(true);
+    }
   });
 });

@@ -15,12 +15,31 @@ const REASON_TO_MODES: Record<ReasonCode, AdaptationMode[]> = {
 
 const DEFAULT_MANUAL_MODES: AdaptationMode[] = ["focus", "plain-language"];
 
+/**
+ * The deterministic fallback has no model to ground a diagram or quiz
+ * in the source text, so it can only ever render presentation- and
+ * explanation-level content. "visual-map" and "check-understanding"
+ * are excluded here so a fallback plan never claims a primary/supporting
+ * mode it cannot actually back with content (diagramType stays "none"
+ * and knowledgeCheck stays absent).
+ */
+const RENDERABLE_FALLBACK_MODES: readonly AdaptationMode[] = [
+  "focus",
+  "plain-language",
+  "step-by-step",
+];
+
+function toRenderableMode(mode: AdaptationMode): AdaptationMode {
+  return RENDERABLE_FALLBACK_MODES.includes(mode) ? mode : "plain-language";
+}
+
 function pickModes(candidates: AdaptationMode[]): {
   primaryMode: AdaptationMode;
   supportingModes: AdaptationMode[];
 } {
-  const deduped = candidates.filter(
-    (mode, index) => candidates.indexOf(mode) === index,
+  const renderable = candidates.map(toRenderableMode);
+  const deduped = renderable.filter(
+    (mode, index) => renderable.indexOf(mode) === index,
   );
   const [primaryMode = "focus", ...rest] = deduped;
   const supportingModes = rest
