@@ -1,5 +1,5 @@
-import { BaselineReader } from "@/components/reader/BaselineReader";
+import { AdaptiveReaderExperience } from "@/components/adaptive/AdaptiveReaderExperience";
 
 export default function HomePage() {
-  return <BaselineReader />;
+  return <AdaptiveReaderExperience />;
 }
