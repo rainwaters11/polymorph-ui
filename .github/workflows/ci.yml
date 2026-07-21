@@ -42,7 +42,13 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
       - name: Build
         env:
           NODE_ENV: production
         run: npm run build
+
+      - name: End-to-end learner journey
+        run: npm run test:e2e

@@ -16,6 +16,8 @@ export function HeaderReferenceTable({
       id={id}
       className="reference-table-wrap"
       data-region="reference-content"
+      tabIndex={0}
+      aria-label={`${caption}. Scroll horizontally to view every column.`}
     >
       <table className="reference-table">
         <caption>{caption}</caption>

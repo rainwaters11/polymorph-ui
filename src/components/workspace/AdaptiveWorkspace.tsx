@@ -110,6 +110,7 @@ export function AdaptiveWorkspace() {
   const preservedEpisodeRef = useRef<string | null>(null);
   const manualRequestRef = useRef<ManualHelpRequest | null>(null);
   const baselineRef = useRef<HTMLDivElement>(null);
+  const demoTriggerRef = useRef<HTMLButtonElement>(null);
   const focusReturnRef = useRef<HTMLElement | null>(null);
   const loadingCancelRef = useRef<HTMLButtonElement>(null);
   const preservedScrollRef = useRef(0);
@@ -118,17 +119,21 @@ export function AdaptiveWorkspace() {
   const requestControllersRef = useRef(new Map<number, AbortController>());
   const startedRequestTokensRef = useRef(new Set<number>());
 
-  const preserveBaselineContext = useCallback(() => {
-    preservedScrollRef.current = window.scrollY;
-    const activeElement =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    focusReturnRef.current =
-      activeElement && activeElement !== document.body
-        ? activeElement
-        : baselineRef.current;
-  }, []);
+  const preserveBaselineContext = useCallback(
+    (preferredFocusTarget?: HTMLElement | null) => {
+      preservedScrollRef.current = window.scrollY;
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      focusReturnRef.current =
+        preferredFocusTarget ??
+        (activeElement && activeElement !== document.body
+          ? activeElement
+          : baselineRef.current);
+    },
+    [],
+  );
 
   const preserveSourceContext = useCallback(
     (
@@ -165,7 +170,9 @@ export function AdaptiveWorkspace() {
         // Bind the offer to the exact evidence episode and source section.
         // Later navigation cannot silently change what is sent to the API.
         preservedEpisodeRef.current = snapshot.episodeId;
-        preserveBaselineContext();
+        preserveBaselineContext(
+          snapshot.source === "demo" ? demoTriggerRef.current : undefined,
+        );
         preserveSourceContext(
           snapshot.sectionId,
           snapshot.activeSectionAnchor,
@@ -201,8 +208,14 @@ export function AdaptiveWorkspace() {
   const restoreBaselinePosition = useCallback(() => {
     restorePendingRef.current = true;
     const top = preservedScrollRef.current;
+    const focusTarget = focusReturnRef.current;
     window.requestAnimationFrame(() => {
       window.scrollTo({ top, behavior: "instant" });
+      if (focusTarget?.isConnected) {
+        focusTarget.focus({ preventScroll: true });
+      } else {
+        baselineRef.current?.focus({ preventScroll: true });
+      }
     });
   }, []);
 
@@ -530,7 +543,7 @@ export function AdaptiveWorkspace() {
   }
 
   return (
-    <main className="adaptive-workspace">
+    <div className="adaptive-workspace">
       <aside className="demo-console" aria-label="Hackathon demo controls">
         <div>
           <p className="adaptive-eyebrow">Live demo control</p>
@@ -541,6 +554,7 @@ export function AdaptiveWorkspace() {
           </span>
         </div>
         <button
+          ref={demoTriggerRef}
           type="button"
           className="demo-trigger"
           disabled={
@@ -601,7 +615,7 @@ export function AdaptiveWorkspace() {
       )}
 
       {machine.state === "ADAPTATION_REQUESTED" && (
-        <section
+        <main
           className="workspace-loading"
           aria-labelledby="workspace-loading-title"
         >
@@ -622,11 +636,11 @@ export function AdaptiveWorkspace() {
               Cancel and return to the lesson
             </button>
           </div>
-        </section>
+        </main>
       )}
 
       {adapted && machine.plan && (
-        <div className="workspace-adapted-shell">
+        <main className="workspace-adapted-shell">
           {machine.state === "RECOVERING" && (
             <p className="recovery-status" role="status">
               Nice work — restoring the full lesson…
@@ -650,7 +664,7 @@ export function AdaptiveWorkspace() {
             }
             onKnowledgeConfirmed={() => dispatch({ type: "RECOVERY_DETECTED" })}
           />
-        </div>
+        </main>
       )}
 
       <div
@@ -718,6 +732,6 @@ export function AdaptiveWorkspace() {
           </dl>
         </details>
       )}
-    </main>
+    </div>
   );
 }
