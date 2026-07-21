@@ -280,6 +280,36 @@ describe("AdaptiveWorkspace learner journey", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("cancels an automatic notice when consent changes to manual-only", () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    render(<AdaptiveWorkspace />);
+    fireEvent.click(
+      screen.getByRole("radio", { name: /adapt after a notice/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /simulate reading friction/i }),
+    );
+    act(() => vi.advanceTimersByTime(4_650));
+    expect(
+      screen.getByRole("heading", { name: /preparing a clearer view/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: /only when i ask/i }));
+    act(() => vi.advanceTimersByTime(2_000));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", {
+        name: /creating a quieter path/i,
+      }),
+    ).not.toBeInTheDocument();
+    const state = screen.getByText("State").parentElement;
+    const evidenceSource = screen.getByText("Evidence source").parentElement;
+    expect(state?.querySelector("dd")).toHaveTextContent("OBSERVING");
+    expect(evidenceSource?.querySelector("dd")).toHaveTextContent("genuine");
+  });
+
   it("keeps direct manual help available in manual-only mode and falls back safely", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

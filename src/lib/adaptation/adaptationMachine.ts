@@ -152,7 +152,9 @@ export function adaptationMachineReducer(
 
   if (
     event.type === "ROUTE_ASSESSMENT" &&
-    context.state === "FRICTION_SUSPECTED"
+    (context.state === "FRICTION_SUSPECTED" ||
+      context.state === "ADAPTATION_OFFERED" ||
+      context.state === "AUTOMATIC_ADAPTATION_NOTICE")
   ) {
     if (event.consentMode === "automatic") {
       return { ...context, state: "AUTOMATIC_ADAPTATION_NOTICE" };
@@ -160,7 +162,9 @@ export function adaptationMachineReducer(
     if (event.consentMode === "offer") {
       return { ...context, state: "ADAPTATION_OFFERED" };
     }
-    return { ...context, state: "OBSERVING", assessment: null };
+    return context.state === "FRICTION_SUSPECTED"
+      ? { ...context, state: "OBSERVING", assessment: null }
+      : { ...context, state: "ADAPTATION_DECLINED" };
   }
 
   if (

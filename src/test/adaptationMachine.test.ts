@@ -112,6 +112,28 @@ describe("adaptationMachineReducer", () => {
     expect(requested.requestKind).toBe("telemetry");
   });
 
+  it("re-routes a pending automatic notice when consent changes", () => {
+    const notice = reduce(
+      initialAdaptationMachineContext,
+      { type: "START_OBSERVING" },
+      { type: "ASSESSMENT_RECEIVED", assessment: assessment() },
+      { type: "ROUTE_ASSESSMENT", consentMode: "automatic" },
+    );
+
+    const offered = adaptationMachineReducer(notice, {
+      type: "ROUTE_ASSESSMENT",
+      consentMode: "offer",
+    });
+    expect(offered.state).toBe("ADAPTATION_OFFERED");
+
+    const declined = adaptationMachineReducer(notice, {
+      type: "ROUTE_ASSESSMENT",
+      consentMode: "manual-only",
+    });
+    expect(declined.state).toBe("ADAPTATION_DECLINED");
+    expect(declined.activeRequestToken).toBeNull();
+  });
+
   it("keeps manual-only learners in the standard observing view", () => {
     const context = reduce(
       initialAdaptationMachineContext,

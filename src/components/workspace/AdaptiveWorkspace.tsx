@@ -260,12 +260,17 @@ export function AdaptiveWorkspace() {
   }, [machine.state]);
 
   useEffect(() => {
-    if (machine.state !== "AUTOMATIC_ADAPTATION_NOTICE") return;
+    if (
+      machine.state !== "AUTOMATIC_ADAPTATION_NOTICE" ||
+      consentMode !== "automatic"
+    ) {
+      return;
+    }
     const timeout = window.setTimeout(() => {
       dispatch({ type: "CONTINUE_AUTOMATIC" });
     }, AUTOMATIC_NOTICE_MS);
     return () => window.clearTimeout(timeout);
-  }, [machine.state]);
+  }, [consentMode, machine.state]);
 
   useEffect(() => {
     if (machine.state !== "RECOVERING") return;
@@ -434,6 +439,27 @@ export function AdaptiveWorkspace() {
     setDemoStatus("arming");
     setTelemetrySource("demo");
     if (telemetrySource === "demo") telemetry.reset();
+  }
+
+  function changeConsentMode(nextMode: AssistanceConsentMode) {
+    setConsentMode(nextMode);
+    const pendingMode =
+      machine.state === "AUTOMATIC_ADAPTATION_NOTICE"
+        ? "automatic"
+        : machine.state === "ADAPTATION_OFFERED"
+          ? "offer"
+          : null;
+    if (pendingMode === null || nextMode === pendingMode) return;
+    if (nextMode === "manual-only") {
+      if (telemetrySource === "demo") {
+        telemetry.reset();
+        previousAssessmentRef.current = null;
+        setLatestAssessment(null);
+        setTelemetrySource("genuine");
+      }
+      setAdaptationSource(null);
+    }
+    dispatch({ type: "ROUTE_ASSESSMENT", consentMode: nextMode });
   }
 
   function declineAdaptation() {
@@ -621,7 +647,7 @@ export function AdaptiveWorkspace() {
           onQuizAttempt={(attempt) => {
             if (!attempt.correct) telemetry.recordQuizIncorrect();
           }}
-          onAssistancePreferenceChange={setConsentMode}
+          onAssistancePreferenceChange={changeConsentMode}
           onManualHelp={requestManualHelp}
         />
       </div>
