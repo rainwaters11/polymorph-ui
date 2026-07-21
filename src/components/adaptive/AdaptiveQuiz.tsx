@@ -6,9 +6,15 @@ import type { AdaptationPlan } from "@/lib/contracts/adaptation";
 export function AdaptiveQuiz({
   knowledgeCheck,
   onCorrect,
+  onIncorrect,
+  showExplanationOnIncorrect = true,
+  incorrectMessage,
 }: {
   knowledgeCheck?: AdaptationPlan["knowledgeCheck"];
   onCorrect?: () => void;
+  onIncorrect?: () => void;
+  showExplanationOnIncorrect?: boolean;
+  incorrectMessage?: string;
 }) {
   const groupName = useId();
   const [selectedIndex, setSelectedIndex] = useState<number>();
@@ -58,6 +64,7 @@ export function AdaptiveQuiz({
         onClick={() => {
           setSubmitted(true);
           if (isCorrect) onCorrect?.();
+          else onIncorrect?.();
         }}
       >
         Check my answer
@@ -68,7 +75,10 @@ export function AdaptiveQuiz({
           role="status"
         >
           <strong>{isCorrect ? "That’s it." : "Try once more."}</strong>{" "}
-          {knowledgeCheck.explanation}
+          {isCorrect || showExplanationOnIncorrect
+            ? knowledgeCheck.explanation
+            : (incorrectMessage ??
+              "Use the support in this view, then try again when you’re ready.")}
         </p>
       )}
     </section>

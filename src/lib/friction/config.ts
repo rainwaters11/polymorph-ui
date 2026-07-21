@@ -10,7 +10,9 @@ export const FRICTION_CONFIG = {
     scrollReversal: { minimum: 4, weight: 2 },
     jargonDwell: { minimumMs: 4_000, weight: 1 },
     inactivity: { minimumMs: 30_000, weight: 1 },
-    quizRetry: { minimum: 2, weight: 3 },
+    // Repeated attempts are direct, task-specific evidence that the current
+    // presentation has not yet helped the learner demonstrate the objective.
+    quizRetry: { minimum: 2, weight: 6 },
   },
   thresholds: {
     possibleConfusion: 3,

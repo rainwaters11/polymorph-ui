@@ -6,6 +6,7 @@ import {
   type ApprovedAdaptiveComponent,
 } from "@/lib/adaptation/componentRegistry";
 import { AdaptiveQuiz } from "@/components/adaptive/AdaptiveQuiz";
+import { FocusMission } from "@/components/adaptive/FocusMission";
 import {
   DismissAdaptationControl,
   PauseTelemetryControl,
@@ -50,6 +51,7 @@ export function AdaptiveExperience({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [readingComfort, setReadingComfort] = useState(false);
 
   useEffect(() => {
     previousFocusRef.current =
@@ -88,6 +90,9 @@ export function AdaptiveExperience({
   }
 
   const { plan: validPlan } = composition;
+  const isFocusMission =
+    validPlan.primaryMode === "plain-language" &&
+    validPlan.transparency.reasonCodes.includes("QUIZ_RETRY");
 
   function renderComponent(component: ApprovedAdaptiveComponent) {
     if (component === "FocusReader") {
@@ -150,28 +155,43 @@ export function AdaptiveExperience({
 
   return (
     <section
-      className={`adaptive-experience density-${validPlan.presentation.density}`}
+      className={`adaptive-experience density-${validPlan.presentation.density}${isFocusMission ? " is-focus-mission" : ""}${readingComfort ? " is-reading-comfort" : ""}`}
       data-primary-mode={validPlan.primaryMode}
       data-source-section={validPlan.sourceSectionId}
       aria-labelledby="adaptive-experience-heading"
     >
       <header className="adaptive-experience-header">
         <div>
-          <p className="adaptive-eyebrow">Adapted learning view</p>
+          <p className="adaptive-eyebrow">
+            {isFocusMission
+              ? "Focus Mission · Adapted view"
+              : "Adapted learning view"}
+          </p>
           <h2 id="adaptive-experience-heading" ref={headingRef} tabIndex={-1}>
             {validPlan.instructionalSupport.heading}
           </h2>
         </div>
         <span className="adaptive-mode-badge">
-          {validPlan.primaryMode.replaceAll("-", " ")}
+          {isFocusMission
+            ? "guided recovery"
+            : validPlan.primaryMode.replaceAll("-", " ")}
         </span>
       </header>
 
       <AdaptationReason transparency={validPlan.transparency} />
 
-      <div className="adaptive-component-stack">
-        {composition.components.map(renderComponent)}
-      </div>
+      {isFocusMission ? (
+        <FocusMission
+          plan={validPlan}
+          readingComfort={readingComfort}
+          onReadingComfortChange={setReadingComfort}
+          onKnowledgeConfirmed={onKnowledgeConfirmed}
+        />
+      ) : (
+        <div className="adaptive-component-stack">
+          {composition.components.map(renderComponent)}
+        </div>
+      )}
 
       {showOriginal && (
         <StandardReader title={sourceTitle} sourceText={sourceText} />

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { AdaptationNotice } from "@/components/adaptive/AdaptationNotice";
 import { AdaptiveExperience } from "@/components/adaptive/AdaptiveExperience";
+import { FrictionDecisionTrace } from "@/components/workspace/FrictionDecisionTrace";
 import {
   BaselineReader,
   getSectionSourceText,
@@ -44,6 +45,12 @@ import { classifyReadingFriction } from "@/lib/friction/classifier";
 const AUTOMATIC_NOTICE_MS = 1_500;
 const RECOVERY_STEP_MS = 850;
 const DEMO_JARGON_DWELL_MS = 4_100;
+
+const CONSENT_MODE_LABELS: Record<AssistanceConsentMode, string> = {
+  offer: "Ask before changing",
+  automatic: "Automatic after a notice",
+  "manual-only": "Only when I ask",
+};
 
 type AdaptationSourceSnapshot = SectionActivity & {
   episodeId: string | null;
@@ -167,6 +174,7 @@ export function AdaptiveWorkspace() {
         machine.state === "OBSERVING" &&
         preservedEpisodeRef.current !== snapshot.episodeId
       ) {
+        if (snapshot.source === "demo") setDemoStatus("idle");
         // Bind the offer to the exact evidence episode and source section.
         // Later navigation cannot silently change what is sent to the API.
         preservedEpisodeRef.current = snapshot.episodeId;
@@ -204,6 +212,9 @@ export function AdaptiveWorkspace() {
     machine.state === "FALLBACK_ADAPTED" ||
     machine.state === "RECOVERING" ||
     machine.state === "RECOVERED";
+  const preparingAdaptation =
+    machine.state === "ADAPTATION_OFFERED" ||
+    machine.state === "AUTOMATIC_ADAPTATION_NOTICE";
 
   const restoreBaselinePosition = useCallback(() => {
     restorePendingRef.current = true;
@@ -479,6 +490,7 @@ export function AdaptiveWorkspace() {
     if (pendingMode === null || nextMode === pendingMode) return;
     if (nextMode === "manual-only") {
       if (telemetrySource === "demo") {
+        setDemoStatus("idle");
         telemetry.reset();
         previousAssessmentRef.current = null;
         setLatestAssessment(null);
@@ -496,6 +508,7 @@ export function AdaptiveWorkspace() {
       );
     }
     if (telemetrySource === "demo") {
+      setDemoStatus("idle");
       telemetry.reset();
       previousAssessmentRef.current = null;
       setLatestAssessment(null);
@@ -543,31 +556,48 @@ export function AdaptiveWorkspace() {
   }
 
   return (
-    <div className="adaptive-workspace">
+    <div
+      className={`adaptive-workspace${preparingAdaptation ? " is-preparing-adaptation" : ""}`}
+    >
       <aside className="demo-console" aria-label="Hackathon demo controls">
-        <div>
-          <p className="adaptive-eyebrow">Live demo control</p>
-          <strong>Use the real Polymorph decision path</strong>
+        <div className="demo-console-copy">
+          <p className="adaptive-eyebrow">
+            Reference implementation · Technical reading
+          </p>
+          <strong>Watch one learning interface reshape itself</strong>
           <span>
-            Simulates repeated rereading, quiz retries, and a 4.1-second jargon
-            dwell. No diagnosis is made.
+            Run the labeled simulation, or answer the knowledge check
+            incorrectly twice for a genuine trigger. Only interaction summaries
+            are evaluated; no diagnosis is made.
           </span>
+          <FrictionDecisionTrace assessment={latestAssessment} />
         </div>
-        <button
-          ref={demoTriggerRef}
-          type="button"
-          className="demo-trigger"
-          disabled={
-            machine.state !== "OBSERVING" ||
-            demoStatus !== "idle" ||
-            telemetry.status === "paused"
-          }
-          onClick={triggerDemo}
-        >
-          {demoStatus === "idle"
-            ? "Simulate reading friction"
-            : "Simulating evidence…"}
-        </button>
+        <div className="demo-console-actions">
+          <p>
+            Current behavior:{" "}
+            <strong>{CONSENT_MODE_LABELS[consentMode]}</strong>
+          </p>
+          {!adapted && (
+            <a href="#region-learning-support">Change assistance behavior</a>
+          )}
+          <a href="#region-knowledge-check">Try the genuine quiz trigger</a>
+          <button
+            ref={demoTriggerRef}
+            type="button"
+            className="demo-trigger"
+            aria-label="Run the 5-second adaptive demo: simulate reading friction"
+            disabled={
+              machine.state !== "OBSERVING" ||
+              demoStatus !== "idle" ||
+              telemetry.status === "paused"
+            }
+            onClick={triggerDemo}
+          >
+            {demoStatus === "idle"
+              ? "Run the 5-second adaptive demo"
+              : "Evaluating privacy-safe evidence…"}
+          </button>
+        </div>
       </aside>
 
       {telemetry.status === "paused" && !adapted && (
@@ -669,6 +699,7 @@ export function AdaptiveWorkspace() {
 
       <div
         ref={baselineRef}
+        className="baseline-workspace"
         tabIndex={-1}
         hidden={adapted || machine.state === "ADAPTATION_REQUESTED"}
       >

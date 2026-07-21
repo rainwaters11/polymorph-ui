@@ -2,6 +2,8 @@
 
 > **A living learning interface that safely reshapes presentation, instruction, and interaction around the learner’s current needs.**
 
+[**Open the live demo**](https://polymorph-ui-gamma.vercel.app/) · [Demo runbook](#repeatable-demo-runbook)
+
 Polymorph UI is an adaptive technical-learning experience built for learners who may benefit from different levels of focus, pacing, explanation, visualization, or guided practice.
 
 Most AI learning tools adapt the answer. **Polymorph UI adapts the learning environment itself.**
@@ -30,7 +32,7 @@ The complete demo journey is:
 4. The learner is offered help according to their assistance preference.
 5. GPT-5.6 returns a schema-validated adaptation plan.
 6. React recomposes the same interface through an approved component registry.
-7. The learner receives a focused, clarified, visual, guided, or practice-based experience.
+7. Repeated check difficulty opens a **Focus Mission** that quiets the workspace and gates support from one clue, to a visual, to a short explanation with optional browser-native audio.
 8. The learner can dismiss the adaptation, pause telemetry, show the original wording, reset the view, and return to the same reading position.
 
 The transformation must be visibly meaningful. It can collapse secondary navigation, emphasize the active section, increase spacing, explain terminology, render an approved diagram, introduce ordered steps, or present one grounded knowledge check.
@@ -147,14 +149,15 @@ The lesson is intentionally dense enough to create a meaningful before-and-after
 
 ## Repeatable demo runbook
 
-1. Start the app and leave **Ask before changing** selected.
-2. Open the development inspector in the lower-right corner.
-3. Select **Simulate reading friction**. This labeled control records two rereads, two incorrect quiz attempts, and a 4.1-second jargon dwell through the same privacy-safe telemetry hook used by genuine interactions.
-4. Wait for **Would a clearer view help?** and verify the inspector shows the classifier reason codes. No model request has been made yet.
-5. Select **Adapt now**. Verify the interface sends one grounded request, then renders one primary mode and no more than two supporting modes from the approved registry.
-6. Use **Show original text** and **Pause telemetry** to demonstrate learner control. Resume telemetry before continuing the normal demo.
-7. Answer the adapted knowledge check correctly, or select **I understand — return to lesson**.
-8. Verify the recovery notice appears and the original lesson returns at the preserved scroll position and keyboard-focus target.
+1. Open a clean session and select **Adapt after a notice**.
+2. Follow **Try the genuine quiz trigger** to the baseline check.
+3. Choose an incorrect answer and select **Check answer** twice.
+4. Verify the decision trace shows **Score 6 · support threshold 6** and **Repeated knowledge-check attempts**.
+5. Let the cancellable notice finish. Confirm the dense layout dims before the single-column **Focus Mission** appears.
+6. Miss once, choose **Reveal visual cue**, miss again, then choose **Show short explanation**.
+7. Toggle **Reading comfort** and briefly demonstrate **Listen to explanation** and **Stop audio**.
+8. Use **Show original text** and **Pause telemetry**, then answer correctly.
+9. Verify **Momentum restored** appears and the original position and keyboard focus return.
 
 To demonstrate resilience, stop the app, remove `OPENAI_API_KEY` from `.env.local`, restart, and repeat the same sequence. The route returns a complete deterministic fallback through the same validated registry path. Direct **Help me with this section** requests also remain available when proactive support is disabled or telemetry is paused.
 
@@ -166,6 +169,7 @@ To demonstrate resilience, stop the app, remove `OPENAI_API_KEY` from `.env.loca
 - Tailwind CSS
 - Official OpenAI JavaScript/TypeScript SDK
 - Zod
+- Browser-native Speech Synthesis API
 - Vitest and Testing Library
 - GitHub Actions CI
 
@@ -184,11 +188,11 @@ Completed:
 - Structured adaptation API with Zod validation and deterministic fallback
 - Approved adaptive-component registry
 - Explicit end-to-end learner-journey state machine and recovery path
+- Progressive Focus Mission, Reading comfort, native read-aloud, and production decision trace
 
-Planned next:
+Final submission work:
 
-- Accessibility, responsive-layout, and end-to-end QA
-- Deployment, demo capture, and Devpost submission
+- Verify deployment, capture the under-three-minute demo, and submit to Devpost
 
 ## Local setup
 

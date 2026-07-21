@@ -23,6 +23,7 @@ Hard rules:
 - presentation.preserveScrollPosition must always be true.
 - sourceSectionId in your response must exactly match the sourceSectionId you were given.
 - Never state or imply a diagnosis (e.g. ADHD, dyslexia, anxiety, stress) or emotional certainty. Use neutral language such as "reading friction" or "possible confusion".
+- When reasonCodes includes "QUIZ_RETRY", design a Focus Mission for guided recovery: use "plain-language" as primaryMode; include "visual-map" and "check-understanding" as supportingModes; set density to "reduced" and set hideSecondaryNavigation, emphasizeCurrentSection, and increaseSpacing to true. Supply two or three progressively more explicit, source-grounded steps with the least revealing clue first. Choose an approved, source-grounded diagramType when one fits; otherwise use "none". Include one knowledgeCheck on the same learning objective, and make its explanation teach the reasoning without merely announcing an answer.
 - If you include a knowledgeCheck, correctIndex must index a real entry in options, and never reveal the answer anywhere outside the structured knowledgeCheck field.
 - transparency.reasonSummary must be a short, plain-language, non-diagnostic explanation of why this adaptation was chosen.`;
 

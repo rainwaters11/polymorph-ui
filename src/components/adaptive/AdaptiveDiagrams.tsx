@@ -106,14 +106,5 @@ export function ApprovedVisualMap({
   if (diagramType === "request-cycle") return <RequestCycleDiagram />;
   if (diagramType === "retry-timeline") return <RetryTimelineDiagram />;
   if (diagramType === "rate-limit-window") return <RateLimitWindowDiagram />;
-
-  return (
-    <section className="adaptive-card adaptive-diagram-empty" role="status">
-      <p className="adaptive-eyebrow">Visual map</p>
-      <h3>The explanation does not require a diagram</h3>
-      <p>
-        The focused text remains available without adding a decorative visual.
-      </p>
-    </section>
-  );
+  return null;
 }
