@@ -68,11 +68,11 @@ A meaningful adaptation changes the environment—not only its color or font siz
 
 Polymorph UI supports three session-only assistance preferences:
 
-| Learner-facing option | Contract value | Behavior |
-| --- | --- | --- |
-| Ask before changing | `offer` | Default; offer support before adapting |
-| Adapt automatically after a notice | `automatic` | Explicit opt-in; show a cancellable notice first |
-| Only adapt when I ask | `manual-only` | No proactive transition |
+| Learner-facing option              | Contract value | Behavior                                         |
+| ---------------------------------- | -------------- | ------------------------------------------------ |
+| Ask before changing                | `offer`        | Default; offer support before adapting           |
+| Adapt automatically after a notice | `automatic`    | Explicit opt-in; show a cancellable notice first |
+| Only adapt when I ask              | `manual-only`  | No proactive transition                          |
 
 **Help me with this section** remains available in every mode, including when telemetry is paused or proactive assistance has been suppressed.
 
@@ -118,12 +118,12 @@ Consent router                                       │
 
 ## Approved adaptation modes
 
-| Mode | Learner-facing purpose |
-| --- | --- |
-| `focus` | Reduce competing information |
-| `plain-language` | Clarify terminology and explanation |
-| `visual-map` | Show relationships or process visually |
-| `step-by-step` | Break the concept into ordered stages |
+| Mode                  | Learner-facing purpose                 |
+| --------------------- | -------------------------------------- |
+| `focus`               | Reduce competing information           |
+| `plain-language`      | Clarify terminology and explanation    |
+| `visual-map`          | Show relationships or process visually |
+| `step-by-step`        | Break the concept into ordered stages  |
 | `check-understanding` | Provide one grounded practice question |
 
 One plan selects one primary mode and no more than two supporting modes so the experience stays coherent and calm.

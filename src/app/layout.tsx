@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Polymorph UI",
-  description: "An adaptive technical-documentation reader.",
+  title: "API rate limits · Polymorph UI",
+  description:
+    "A learner-controlled technical lesson about API rate limiting, retries, and exponential backoff.",
 };
 
 type RootLayoutProps = Readonly<{
