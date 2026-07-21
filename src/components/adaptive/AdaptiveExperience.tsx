@@ -70,6 +70,17 @@ export function AdaptiveExperience({
           available.
         </p>
         <StandardReader title={sourceTitle} sourceText={sourceText} />
+        <footer
+          className="adaptive-control-bar"
+          aria-label="Invalid adaptation controls"
+        >
+          <PauseTelemetryControl
+            paused={telemetryPaused}
+            onClick={() => onTelemetryPauseChange(!telemetryPaused)}
+          />
+          <ResetViewButton onClick={onReset} />
+          <DismissAdaptationControl onClick={onDismiss} />
+        </footer>
       </div>
     );
   }

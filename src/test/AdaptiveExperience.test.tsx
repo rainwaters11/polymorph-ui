@@ -192,12 +192,34 @@ describe("AdaptiveExperience", () => {
   });
 
   it("keeps the standard source visible when runtime data fails validation", () => {
-    renderExperience({ primaryMode: "unknown" });
+    const onDismiss = vi.fn();
+    const onReset = vi.fn();
+    const onPause = vi.fn();
+    render(
+      <AdaptiveExperience
+        plan={{ primaryMode: "unknown" }}
+        sourceTitle="Why APIs enforce rate limits"
+        sourceText="Servers have finite compute and request capacity."
+        onDismiss={onDismiss}
+        onReset={onReset}
+        onTelemetryPauseChange={onPause}
+      />,
+    );
 
     expect(screen.getByText(/could not be validated/i)).toBeInTheDocument();
     expect(
       screen.getByText("Servers have finite compute and request capacity."),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pause telemetry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset view" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Return to standard view" }),
+    );
+
+    expect(onPause).toHaveBeenCalledWith(true);
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });
 
