@@ -33,6 +33,7 @@ export type ReadingTelemetry = {
   selectionRepeatCount: number;
   scrollReversalCount: number;
   jargonHoverMs: number;
+  /** Longest continuous idle period observed during this episode. */
   inactivityMs: number;
   quizIncorrectCount: number;
   sectionVisibleMs: number;

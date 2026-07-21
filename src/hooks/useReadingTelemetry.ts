@@ -259,9 +259,8 @@ export function useReadingTelemetry({
   }, []);
 
   // Repeat-selection detection keys off the stable containing-section
-  // identity only. The selected text itself is read transiently to
-  // check for non-emptiness and is never stored on the episode state
-  // or emitted in any snapshot.
+  // identity only. The selected text itself is never read, stored, or
+  // emitted.
   useEffect(() => {
     function handleSelectionChange() {
       if (statusRef.current !== "active") return;
@@ -270,11 +269,14 @@ export function useReadingTelemetry({
       const selection =
         typeof window !== "undefined" ? window.getSelection() : null;
       if (!selection || selection.isCollapsed) return;
-      const text = selection.toString().trim();
-      if (!text) return;
 
       const containingSectionId = findContainingSectionId(selection.anchorNode);
-      if (!containingSectionId) return;
+      if (
+        !containingSectionId ||
+        containingSectionId !== sectionRef.current.sectionId
+      ) {
+        return;
+      }
 
       if (episode.lastSelectionSectionId === containingSectionId) {
         episode.aggregator.recordSelectionRepeat();
@@ -352,11 +354,9 @@ export function useReadingTelemetry({
     };
   }, [sectionId]);
 
-  // Sole writer of inactivityMs: ticks off whole poll windows measured
-  // against `lastActivityAt`, which activity signals only ever advance
-  // (never record duration themselves). This keeps inactivity
-  // accounting continuous and free of double-counting between event
-  // handlers and this poller.
+  // Sole writer of inactivityMs: records the current continuous idle
+  // span. The aggregator keeps the episode's maximum continuous span,
+  // so normal short active gaps cannot accumulate into a false signal.
   useEffect(() => {
     const interval = window.setInterval(() => {
       if (statusRef.current !== "active") return;
@@ -364,8 +364,7 @@ export function useReadingTelemetry({
       if (!episode) return;
       const idleFor = Date.now() - episode.lastActivityAt;
       if (idleFor >= INACTIVITY_POLL_MS) {
-        episode.aggregator.recordInactivityMs(INACTIVITY_POLL_MS);
-        episode.lastActivityAt += INACTIVITY_POLL_MS;
+        episode.aggregator.recordInactivityMs(idleFor);
       }
     }, INACTIVITY_POLL_MS);
     return () => window.clearInterval(interval);

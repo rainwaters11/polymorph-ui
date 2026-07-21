@@ -60,6 +60,15 @@ describe("ReadingTelemetryAggregator", () => {
     expect(aggregator.snapshot().jargonHoverMs).toBe(1000);
   });
 
+  it("keeps the longest continuous inactivity duration", () => {
+    const aggregator = makeAggregator();
+    aggregator.recordInactivityMs(1000);
+    aggregator.recordInactivityMs(4000);
+    aggregator.recordInactivityMs(2000);
+
+    expect(aggregator.snapshot().inactivityMs).toBe(4000);
+  });
+
   it("ignores non-positive durations", () => {
     const aggregator = makeAggregator();
     aggregator.recordJargonHoverMs(0);

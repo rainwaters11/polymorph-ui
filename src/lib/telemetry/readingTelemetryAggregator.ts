@@ -79,7 +79,7 @@ export class ReadingTelemetryAggregator {
 
   recordInactivityMs(durationMs: number): void {
     if (durationMs <= 0) return;
-    this.state.inactivityMs += durationMs;
+    this.state.inactivityMs = Math.max(this.state.inactivityMs, durationMs);
   }
 
   recordQuizIncorrect(): void {

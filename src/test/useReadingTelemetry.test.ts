@@ -35,12 +35,14 @@ function makeSectionNode(sectionId: string): HTMLElement {
  */
 function selectWithinSection(sectionId: string, text = "selection") {
   const node = makeSectionNode(sectionId);
+  const readSelectedText = vi.fn(() => text);
   vi.spyOn(window, "getSelection").mockReturnValue({
     isCollapsed: false,
     anchorNode: node,
-    toString: () => text,
+    toString: readSelectedText,
   } as unknown as Selection);
   document.dispatchEvent(new Event("selectionchange"));
+  return readSelectedText;
 }
 
 beforeEach(() => {
@@ -150,6 +152,17 @@ describe("useReadingTelemetry", () => {
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(0);
   });
 
+  it("ignores repeated selections outside the active section", () => {
+    const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
+
+    act(() => {
+      selectWithinSection("backoff-section");
+      selectWithinSection("backoff-section");
+    });
+
+    expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(0);
+  });
+
   it("never stores or emits the raw selected text", () => {
     // Regression test: only the containing section id may be used for
     // repeat-selection detection; the selected text content itself
@@ -159,12 +172,14 @@ describe("useReadingTelemetry", () => {
       useReadingTelemetry({ ...defaultProps(), onSnapshot }),
     );
 
+    let firstRead!: ReturnType<typeof vi.fn>;
+    let secondRead!: ReturnType<typeof vi.fn>;
     act(() => {
-      selectWithinSection(
+      firstRead = selectWithinSection(
         "rate-limiting-intro",
         "a very specific sentence about exponential backoff",
       );
-      selectWithinSection(
+      secondRead = selectWithinSection(
         "rate-limiting-intro",
         "a very specific sentence about exponential backoff",
       );
@@ -175,6 +190,8 @@ describe("useReadingTelemetry", () => {
     const snapshot = onSnapshot.mock.calls[0][0] as ReadingTelemetry;
     const serialized = JSON.stringify(snapshot);
     expect(serialized).not.toMatch(/exponential backoff/i);
+    expect(firstRead).not.toHaveBeenCalled();
+    expect(secondRead).not.toHaveBeenCalled();
   });
 
   it("counts a manual selection-repeat signal", () => {
@@ -237,28 +254,19 @@ describe("useReadingTelemetry", () => {
     );
   });
 
-  it("measures continuous inactivity without double-counting overlapping activity", () => {
-    // Regression test: activity events must only advance the activity
-    // cursor, never record duration themselves, so a real event
-    // firing between poller ticks cannot double-book the same window
-    // together with the poller.
+  it("does not accumulate ordinary active gaps into false inactivity", () => {
+    // Regression test: thirty ordinary one-second gaps are not one
+    // continuous thirty-second idle period.
     const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
 
     act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    // A real activity signal mid-window should not add its own
-    // inactivity recording on top of the poller's.
-    act(() => {
-      result.current.recordQuizIncorrect();
-      vi.advanceTimersByTime(1000);
+      for (let index = 0; index < 30; index += 1) {
+        vi.advanceTimersByTime(1000);
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+      }
     });
 
-    const snapshot = result.current.getSnapshot();
-    // Two full 1000ms poll windows elapsed; the activity signal reset
-    // the cursor but recorded no duration of its own, so the total
-    // must stay at exactly two windows, not more.
-    expect(snapshot?.inactivityMs).toBe(2000);
+    expect(result.current.getSnapshot()?.inactivityMs).toBe(1000);
   });
 
   it("counts an incorrect quiz attempt", () => {
