@@ -75,9 +75,19 @@ export function AdaptiveRenderer({
             The plan did not match the approved component contract. No generated
             content was rendered, and the original source remains available.
           </p>
-          <button type="button" onClick={onReset}>
-            Return to standard view
-          </button>
+          <nav
+            className="adaptive-control-bar"
+            aria-label="Adaptation fallback controls"
+          >
+            <PauseTelemetryControl
+              paused={telemetryPaused}
+              onToggle={onTelemetryToggle}
+            />
+            <ResetViewButton onReset={onReset} />
+            <button type="button" onClick={onDismiss}>
+              Dismiss adaptation
+            </button>
+          </nav>
         </section>
         <OriginalSourcePanel section={sourceSection} />
       </main>

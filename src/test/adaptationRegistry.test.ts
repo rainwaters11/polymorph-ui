@@ -67,6 +67,20 @@ describe("controlled adaptive component registry", () => {
     ]);
   });
 
+  it("renders a repeated supporting mode only once", () => {
+    const plan = {
+      ...createMockPlanForMode("focus"),
+      supportingModes: ["plain-language", "plain-language"],
+    };
+    const result = resolveAdaptationComposition(plan, sourceSection);
+
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.composition.supporting.map((item) => item.mode)).toEqual([
+      "plain-language",
+    ]);
+  });
+
   it("rejects a valid plan when its source identity does not match", () => {
     const plan = {
       ...createMockPlanForMode("focus"),

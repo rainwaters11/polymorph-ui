@@ -62,6 +62,11 @@ export function resolveAdaptationComposition(
   }
 
   const plan = result.data;
+  const supportingModes = plan.supportingModes.filter(
+    (mode, index, modes) =>
+      mode !== plan.primaryMode && modes.indexOf(mode) === index,
+  );
+
   return {
     status: "ready",
     composition: {
@@ -70,7 +75,7 @@ export function resolveAdaptationComposition(
         mode: plan.primaryMode,
         Component: ADAPTIVE_COMPONENT_REGISTRY[plan.primaryMode],
       },
-      supporting: plan.supportingModes.map((mode) => ({
+      supporting: supportingModes.map((mode) => ({
         mode,
         Component: ADAPTIVE_COMPONENT_REGISTRY[mode],
       })),

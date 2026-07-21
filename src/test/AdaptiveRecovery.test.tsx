@@ -65,14 +65,17 @@ describe("adaptive learner controls and restoration", () => {
   });
 
   it("fails safely to original content for an invalid plan", () => {
+    const onTelemetryToggle = vi.fn();
+    const onDismiss = vi.fn();
+    const onReset = vi.fn();
     render(
       <AdaptiveRenderer
         plan={{ primaryMode: "unknown" }}
         sourceSection={sourceSection}
         telemetryPaused={false}
-        onTelemetryToggle={vi.fn()}
-        onDismiss={vi.fn()}
-        onReset={vi.fn()}
+        onTelemetryToggle={onTelemetryToggle}
+        onDismiss={onDismiss}
+        onReset={onReset}
       />,
     );
 
@@ -82,6 +85,18 @@ describe("adaptive learner controls and restoration", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(/unchanged source/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /pause reading signals/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /reset view/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /dismiss adaptation/i }),
+    );
+
+    expect(onTelemetryToggle).toHaveBeenCalledTimes(1);
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it("uses an immediate transition when reduced motion is requested", async () => {
