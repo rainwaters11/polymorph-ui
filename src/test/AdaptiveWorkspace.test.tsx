@@ -87,14 +87,13 @@ afterEach(() => {
 
 describe("AdaptiveWorkspace learner journey", () => {
   it("uses the shared demo path for one grounded request and restores after recovery", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ plan: successfulPlan(), fallback: false }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
-      );
+    let resolveRequest: ((response: Response) => void) | undefined;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
     Object.defineProperty(window, "scrollY", {
       value: 360,
       writable: true,
@@ -102,6 +101,10 @@ describe("AdaptiveWorkspace learner journey", () => {
     });
 
     render(<AdaptiveWorkspace />);
+    const helpButton = screen.getByRole("button", {
+      name: /help me with this section/i,
+    });
+    helpButton.focus();
     fireEvent.click(
       screen.getByRole("button", { name: /simulate reading friction/i }),
     );
@@ -117,6 +120,24 @@ describe("AdaptiveWorkspace learner journey", () => {
     // bound to the already-classified evidence episode.
     fireEvent.click(screen.getByRole("link", { name: /exponential backoff/i }));
     fireEvent.click(screen.getByRole("button", { name: /adapt now/i }));
+
+    // Slow model responses must not let later telemetry batches overwrite the
+    // original baseline position or focus target with loading-screen context.
+    Object.defineProperty(window, "scrollY", {
+      value: 900,
+      writable: true,
+      configurable: true,
+    });
+    screen.getByRole("button", { name: /simulate reading friction/i }).focus();
+    act(() => vi.advanceTimersByTime(1_200));
+    await act(async () => {
+      resolveRequest?.(
+        new Response(
+          JSON.stringify({ plan: successfulPlan(), fallback: false }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    });
     await flushRequest();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -152,6 +173,7 @@ describe("AdaptiveWorkspace learner journey", () => {
       top: 360,
       behavior: "instant",
     });
+    expect(helpButton).toHaveFocus();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

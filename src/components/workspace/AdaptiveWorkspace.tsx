@@ -107,6 +107,7 @@ export function AdaptiveWorkspace() {
   const [requestStatus, setRequestStatus] = useState("");
 
   const previousAssessmentRef = useRef<FrictionAssessment | null>(null);
+  const preservedEpisodeRef = useRef<string | null>(null);
   const manualRequestRef = useRef<ManualHelpRequest | null>(null);
   const baselineRef = useRef<HTMLDivElement>(null);
   const focusReturnRef = useRef<HTMLElement | null>(null);
@@ -154,9 +155,14 @@ export function AdaptiveWorkspace() {
       );
       previousAssessmentRef.current = assessment;
       setLatestAssessment(assessment);
-      if (assessment.eligibleForAdaptation) {
+      if (
+        assessment.eligibleForAdaptation &&
+        machine.state === "OBSERVING" &&
+        preservedEpisodeRef.current !== snapshot.episodeId
+      ) {
         // Bind the offer to the exact evidence episode and source section.
         // Later navigation cannot silently change what is sent to the API.
+        preservedEpisodeRef.current = snapshot.episodeId;
         preserveBaselineContext();
         preserveSourceContext(
           snapshot.sectionId,
@@ -166,7 +172,7 @@ export function AdaptiveWorkspace() {
         dispatch({ type: "ASSESSMENT_RECEIVED", assessment });
       }
     },
-    [preserveBaselineContext, preserveSourceContext],
+    [machine.state, preserveBaselineContext, preserveSourceContext],
   );
 
   const telemetry = useReadingTelemetry({
