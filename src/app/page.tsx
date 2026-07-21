@@ -1,5 +1,5 @@
-import { FoundationWelcome } from "@/components/foundation/FoundationWelcome";
+import { BaselineReader } from "@/components/reader/BaselineReader";
 
 export default function HomePage() {
-  return <FoundationWelcome />;
+  return <BaselineReader />;
 }
