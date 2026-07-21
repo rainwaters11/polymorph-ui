@@ -1,14 +1,20 @@
 import { forwardRef } from "react";
 
 type AdaptationNoticeProps = {
-  kind: "offer" | "automatic";
+  kind?: "offer" | "automatic";
   reason: string;
   onAdapt: () => void;
-  onDecline: () => void;
+  onDecline?: () => void;
+  onStay?: () => void;
 };
 
 export const AdaptationNotice = forwardRef<HTMLElement, AdaptationNoticeProps>(
-  function AdaptationNotice({ kind, reason, onAdapt, onDecline }, ref) {
+  function AdaptationNotice(
+    { kind = "offer", reason, onAdapt, onDecline, onStay },
+    ref,
+  ) {
+    const onStandardView = onDecline ?? onStay;
+
     return (
       <section
         ref={ref}
@@ -17,29 +23,21 @@ export const AdaptationNotice = forwardRef<HTMLElement, AdaptationNoticeProps>(
         aria-live="polite"
         tabIndex={-1}
       >
-        <div className="notice-mark" aria-hidden="true">
-          ✦
-        </div>
+        <div className="notice-mark" aria-hidden="true">✦</div>
         <div className="notice-copy">
-          <p>
+          <p className="adaptive-eyebrow">
             {kind === "offer" ? "Support is available" : "Adaptation notice"}
           </p>
           <h2 id="adaptation-notice-title">
-            {kind === "offer"
-              ? "Would a clearer view help?"
-              : "A clearer view is ready"}
+            {kind === "offer" ? "Would a clearer view help?" : "A clearer view is ready"}
           </h2>
-          <span>{reason}</span>
+          <p>{reason}</p>
         </div>
-        <div className="notice-actions">
-          <button
-            className="adaptive-primary-action"
-            type="button"
-            onClick={onAdapt}
-          >
+        <div className="adaptation-notice-actions">
+          <button className="adaptive-primary-action" type="button" onClick={onAdapt}>
             Adapt now
           </button>
-          <button type="button" onClick={onDecline}>
+          <button type="button" className="adaptive-control" onClick={onStandardView}>
             Stay in standard view
           </button>
         </div>
