@@ -2047,9 +2047,25 @@ a {
   letter-spacing: -0.04em;
 }
 
-.workspace-loading p:last-child {
+.workspace-loading-copy > div > p:last-child {
   margin: 0;
   color: var(--muted);
+}
+
+.workspace-loading-copy > button {
+  min-height: 44px;
+  margin-top: 22px;
+  padding: 10px 15px;
+  border: 1px solid var(--ink);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.workspace-loading-copy > button:hover {
+  background: var(--accent-soft);
 }
 
 .workspace-loader {

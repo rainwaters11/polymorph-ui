@@ -175,6 +175,58 @@ describe("AdaptiveWorkspace learner journey", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("lets the learner abort a stalled request and rejects its late response", async () => {
+    let resolveRequest: ((response: Response) => void) | undefined;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+
+    render(<AdaptiveWorkspace />);
+    const demoButton = screen.getByRole("button", {
+      name: /simulate reading friction/i,
+    });
+    demoButton.focus();
+    fireEvent.click(demoButton);
+    act(() => vi.advanceTimersByTime(4_650));
+    fireEvent.click(screen.getByRole("button", { name: /adapt now/i }));
+
+    expect(
+      screen.getByRole("heading", { name: /creating a quieter path/i }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /cancel and return to the lesson/i }),
+    );
+    act(() => vi.advanceTimersByTime(1));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options?.signal?.aborted).toBe(true);
+    expect(
+      screen.getByRole("heading", {
+        name: "Rate limits, retries, and respectful clients",
+      }),
+    ).toBeVisible();
+    expect(demoButton).toHaveFocus();
+
+    await act(async () => {
+      resolveRequest?.(
+        new Response(
+          JSON.stringify({ plan: successfulPlan(), fallback: false }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    });
+    await flushRequest();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Make rate limits easier to follow",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("declines genuine friction without a request and restores focus and scroll", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     Object.defineProperty(window, "scrollY", {

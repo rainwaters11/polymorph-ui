@@ -587,12 +587,22 @@ export function AdaptiveWorkspace() {
       )}
 
       {machine.state === "ADAPTATION_REQUESTED" && (
-        <section className="workspace-loading" role="status" aria-live="polite">
+        <section
+          className="workspace-loading"
+          aria-labelledby="workspace-loading-title"
+        >
           <span className="workspace-loader" aria-hidden="true" />
-          <div>
+          <div className="workspace-loading-copy">
             <p className="adaptive-eyebrow">Polymorph is adapting</p>
-            <h2>Creating a quieter path through this section</h2>
-            <p>The original lesson and your position remain preserved.</p>
+            <div role="status" aria-live="polite">
+              <h2 id="workspace-loading-title">
+                Creating a quieter path through this section
+              </h2>
+              <p>The original lesson and your position remain preserved.</p>
+            </div>
+            <button type="button" onClick={resetWorkspace}>
+              Cancel and return to the lesson
+            </button>
           </div>
         </section>
       )}
