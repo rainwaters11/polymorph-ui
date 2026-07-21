@@ -11,23 +11,6 @@ import {
   RECOMMENDED_MODES_BY_REASON,
 } from "@/lib/friction/config";
 
-export type FrictionClassifierSession = {
-  handledEpisodeIds: readonly string[];
-  lastEligibleAtMs: number | null;
-  previousAssessment: FrictionAssessment | null;
-};
-
-export type FrictionClassificationResult = {
-  assessment: FrictionAssessment;
-  session: FrictionClassifierSession;
-};
-
-export const initialFrictionClassifierSession: FrictionClassifierSession = {
-  handledEpisodeIds: [],
-  lastEligibleAtMs: null,
-  previousAssessment: null,
-};
-
 type SignalAssessment = {
   score: number;
   reasonCodes: ReasonCode[];
@@ -48,11 +31,11 @@ export function scoreReadingTelemetry(
     reasonCodes.push("SCROLL_REVERSAL");
     score += signals.scrollReversal.weight;
   }
-  if (telemetry.jargonHoverMs >= signals.jargonDwell.minimumMs) {
+  if (telemetry.jargonHoverMs > signals.jargonDwell.minimumMs) {
     reasonCodes.push("JARGON_DWELL");
     score += signals.jargonDwell.weight;
   }
-  if (telemetry.inactivityMs >= signals.inactivity.minimumMs) {
+  if (telemetry.inactivityMs > signals.inactivity.minimumMs) {
     reasonCodes.push("INACTIVITY");
     score += signals.inactivity.weight;
   }
@@ -66,11 +49,12 @@ export function scoreReadingTelemetry(
 
 function stateForScore(
   score: number,
+  episodeId: string,
   previousAssessment: FrictionAssessment | null,
 ): FrictionState {
   if (
     score < FRICTION_CONFIG.thresholds.possibleConfusion &&
-    previousAssessment &&
+    previousAssessment?.episodeId === episodeId &&
     (previousAssessment.state === "high-friction" ||
       previousAssessment.state === "possible-confusion")
   ) {
@@ -99,52 +83,21 @@ function recommendedModes(reasonCodes: ReasonCode[]): AdaptationMode[] {
  */
 export function classifyReadingFriction(
   telemetry: ReadingTelemetry,
-  session: FrictionClassifierSession,
-  nowMs: number,
-): FrictionClassificationResult {
+  previousAssessment: FrictionAssessment | null = null,
+): FrictionAssessment {
   const { score, reasonCodes } = scoreReadingTelemetry(telemetry);
-  const state = stateForScore(score, session.previousAssessment);
+  const state = stateForScore(score, telemetry.episodeId, previousAssessment);
   const reportedReasonCodes =
     state === "recovering" && reasonCodes.length === 0
-      ? (session.previousAssessment?.reasonCodes ?? [])
+      ? (previousAssessment?.reasonCodes ?? [])
       : reasonCodes;
-  const duplicateEpisode = session.handledEpisodeIds.includes(
-    telemetry.episodeId,
-  );
-  const inCooldown =
-    session.lastEligibleAtMs !== null &&
-    nowMs - session.lastEligibleAtMs < FRICTION_CONFIG.cooldownMs;
-  const eligibleForAdaptation =
-    state === "high-friction" && !duplicateEpisode && !inCooldown;
 
-  const assessment = frictionAssessmentSchema.parse({
+  return frictionAssessmentSchema.parse({
     episodeId: telemetry.episodeId,
     state,
     score,
     reasonCodes: reportedReasonCodes,
-    eligibleForAdaptation,
+    eligibleForAdaptation: state === "high-friction",
     recommendedModes: recommendedModes(reportedReasonCodes),
   });
-
-  return {
-    assessment,
-    session: {
-      handledEpisodeIds: eligibleForAdaptation
-        ? [
-            ...session.handledEpisodeIds.slice(
-              -(FRICTION_CONFIG.maxHandledEpisodes - 1),
-            ),
-            telemetry.episodeId,
-          ]
-        : session.handledEpisodeIds,
-      lastEligibleAtMs: eligibleForAdaptation
-        ? nowMs
-        : session.lastEligibleAtMs,
-      previousAssessment: assessment,
-    },
-  };
-}
-
-export function resetFrictionClassifierSession(): FrictionClassifierSession {
-  return { ...initialFrictionClassifierSession };
 }

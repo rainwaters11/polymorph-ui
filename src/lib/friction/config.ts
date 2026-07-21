@@ -16,8 +16,6 @@ export const FRICTION_CONFIG = {
     possibleConfusion: 3,
     highFriction: 6,
   },
-  cooldownMs: 30_000,
-  maxHandledEpisodes: 100,
 } as const;
 
 export const RECOMMENDED_MODES_BY_REASON: Record<
