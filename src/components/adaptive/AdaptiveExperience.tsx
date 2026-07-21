@@ -91,6 +91,7 @@ export function AdaptiveExperience({
 
   const { plan: validPlan } = composition;
   const isFocusMission =
+    validPlan.primaryMode === "plain-language" &&
     validPlan.transparency.reasonCodes.includes("QUIZ_RETRY");
 
   function renderComponent(component: ApprovedAdaptiveComponent) {

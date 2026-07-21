@@ -489,6 +489,7 @@ export function AdaptiveWorkspace() {
     if (pendingMode === null || nextMode === pendingMode) return;
     if (nextMode === "manual-only") {
       if (telemetrySource === "demo") {
+        setDemoStatus("idle");
         telemetry.reset();
         previousAssessmentRef.current = null;
         setLatestAssessment(null);
@@ -506,6 +507,7 @@ export function AdaptiveWorkspace() {
       );
     }
     if (telemetrySource === "demo") {
+      setDemoStatus("idle");
       telemetry.reset();
       previousAssessmentRef.current = null;
       setLatestAssessment(null);

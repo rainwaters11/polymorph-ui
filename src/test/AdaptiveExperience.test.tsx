@@ -113,6 +113,19 @@ describe("controlled adaptation registry", () => {
 });
 
 describe("AdaptiveExperience", () => {
+  it("keeps a visual-map composition when quiz retry is supporting evidence", () => {
+    const plan = validPlan("visual-map");
+    plan.supportingModes = ["plain-language", "check-understanding"];
+    plan.transparency.reasonCodes = ["REPEATED_SELECTION", "QUIZ_RETRY"];
+
+    renderExperience(plan);
+
+    expect(screen.getByText(/text alternative:/i)).toBeVisible();
+    expect(
+      screen.queryByText(/workspace quieted the noise/i),
+    ).not.toBeInTheDocument();
+  });
+
   it.each([
     ["focus", "Why APIs enforce rate limits"],
     ["plain-language", "A rate limit is a server rule"],

@@ -306,6 +306,9 @@ describe("AdaptiveWorkspace learner journey", () => {
 
     const evidenceSource = screen.getByText("Evidence source").parentElement;
     expect(evidenceSource?.querySelector("dd")).toHaveTextContent("genuine");
+    expect(
+      screen.getByRole("button", { name: /simulate reading friction/i }),
+    ).toBeEnabled();
 
     const currentSectionLink = screen.getByRole("link", {
       name: /why apis enforce rate limits/i,
