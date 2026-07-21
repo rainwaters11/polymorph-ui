@@ -1,4 +1,13 @@
 import { z } from "zod";
+import type {
+  AdaptationMode,
+  ManualHelpRequest,
+} from "@/lib/contracts/assistance";
+
+export type {
+  AdaptationMode,
+  ManualHelpRequest,
+} from "@/lib/contracts/assistance";
 
 export const ADAPTATION_MODES = [
   "focus",
@@ -6,9 +15,7 @@ export const ADAPTATION_MODES = [
   "visual-map",
   "step-by-step",
   "check-understanding",
-] as const;
-
-export type AdaptationMode = (typeof ADAPTATION_MODES)[number];
+] as const satisfies readonly AdaptationMode[];
 
 export const REASON_CODES = [
   "REPEATED_SELECTION",
@@ -65,7 +72,15 @@ export const manualHelpRequestSchema = z.object({
   requestedAt: z.string().min(1),
 });
 
-export type ManualHelpRequest = z.infer<typeof manualHelpRequestSchema>;
+type _ManualHelpRequestSchemaMatchesReaderContract =
+  z.infer<typeof manualHelpRequestSchema> extends ManualHelpRequest
+    ? ManualHelpRequest extends z.infer<typeof manualHelpRequestSchema>
+      ? true
+      : never
+    : never;
+
+const _manualHelpRequestSchemaMatchesReaderContract: _ManualHelpRequestSchemaMatchesReaderContract = true;
+void _manualHelpRequestSchemaMatchesReaderContract;
 
 export const adaptationRequestContextSchema = z.discriminatedUnion(
   "authorization",

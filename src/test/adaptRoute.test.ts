@@ -133,6 +133,18 @@ describe("POST /api/adapt", () => {
     expect(requestAdaptationPlanMock).not.toHaveBeenCalled();
   });
 
+  it("rejects an ineligible telemetry assessment before calling the model", async () => {
+    const body = telemetryBody();
+    body.assessment.eligibleForAdaptation = false;
+
+    const response = await POST(postRequest(body));
+    const json = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(json.error.code).toBe("ineligible_telemetry");
+    expect(requestAdaptationPlanMock).not.toHaveBeenCalled();
+  });
+
   it("falls back on a timeout error", async () => {
     requestAdaptationPlanMock.mockRejectedValue(
       new AdaptationModelError("timed out", "timeout", "req-x"),
@@ -223,5 +235,31 @@ describe("POST /api/adapt", () => {
     expect(response.status).toBe(200);
     expect(json.fallback).toBe(true);
     expect(json.plan.sourceSectionId).toBe("rate-limiting-intro");
+  });
+
+  it("falls back when the model changes the deterministic friction state", async () => {
+    const unsafePlan = validPlanFor("rate-limiting-intro");
+    unsafePlan.frictionState = "possible-confusion";
+    requestAdaptationPlanMock.mockResolvedValue(unsafePlan);
+
+    const response = await POST(postRequest(telemetryBody()));
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.fallback).toBe(true);
+    expect(json.plan.frictionState).toBe("high-friction");
+  });
+
+  it("falls back when the model changes the deterministic reason codes", async () => {
+    const unsafePlan = validPlanFor("rate-limiting-intro");
+    unsafePlan.transparency.reasonCodes = ["INACTIVITY"];
+    requestAdaptationPlanMock.mockResolvedValue(unsafePlan);
+
+    const response = await POST(postRequest(telemetryBody()));
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.fallback).toBe(true);
+    expect(json.plan.transparency.reasonCodes).toEqual(["REPEATED_SELECTION"]);
   });
 });

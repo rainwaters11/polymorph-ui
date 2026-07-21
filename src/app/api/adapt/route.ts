@@ -40,6 +40,13 @@ function expectedSourceSectionId(request: AdaptRequest): string {
     : request.manualRequest.sectionId;
 }
 
+function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
 /**
  * Defense in depth beyond the Zod schema: even a schema-valid plan is
  * rejected if it would let a model response weaken mandatory controls
@@ -59,7 +66,20 @@ function isPlanSafe(plan: AdaptationPlan, request: AdaptRequest): boolean {
     plan.supportingModes.length <= 2 &&
     !plan.supportingModes.includes(plan.primaryMode);
 
-  return controlsIntact && sourceIdentityPreserved && modeCountValid;
+  const telemetryEvidencePreserved =
+    request.authorization === "learner-request" ||
+    (plan.frictionState === request.assessment.state &&
+      arraysEqual(
+        plan.transparency.reasonCodes,
+        request.assessment.reasonCodes,
+      ));
+
+  return (
+    controlsIntact &&
+    sourceIdentityPreserved &&
+    modeCountValid &&
+    telemetryEvidencePreserved
+  );
 }
 
 function logOutcome(
@@ -107,6 +127,18 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   const request = parsedRequest.data;
+
+  if (
+    request.authorization === "telemetry-consent" &&
+    !request.assessment.eligibleForAdaptation
+  ) {
+    return errorResponse(
+      422,
+      "ineligible_telemetry",
+      "Telemetry-triggered adaptation requires an eligible deterministic assessment.",
+      requestId,
+    );
+  }
 
   try {
     const plan = await requestAdaptationPlan(request, requestId);
