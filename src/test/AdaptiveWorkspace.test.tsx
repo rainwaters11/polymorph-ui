@@ -225,6 +225,9 @@ describe("AdaptiveWorkspace learner journey", () => {
         name: "Make rate limits easier to follow",
       }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/the focused learning view is ready/i),
+    ).not.toBeInTheDocument();
   });
 
   it("declines genuine friction without a request and restores focus and scroll", () => {

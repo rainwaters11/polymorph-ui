@@ -358,6 +358,7 @@ export function AdaptiveWorkspace() {
             : {};
         const parsedPlan = adaptationPlanSchema.safeParse(parsedBody.plan);
         if (!parsedPlan.success) throw new Error("Invalid adaptation plan");
+        if (requestControllersRef.current.get(token) !== controller) return;
 
         setRequestStatus(
           parsedBody.fallback === true
@@ -378,7 +379,12 @@ export function AdaptiveWorkspace() {
           });
         }
       } catch (error) {
-        if (isAbortError(error)) return;
+        if (
+          isAbortError(error) ||
+          requestControllersRef.current.get(token) !== controller
+        ) {
+          return;
+        }
         setRequestStatus(
           "The assistant is unavailable, so a complete safe fallback is shown.",
         );
