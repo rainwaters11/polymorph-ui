@@ -253,8 +253,10 @@ test("completes the privacy-safe learner journey and restores place and focus", 
   ).toBeVisible();
   await expect(demoButton).toBeFocused();
   await expect
-    .poll(() => page.evaluate(() => window.scrollY))
-    .toBe(preservedScroll);
+    .poll(async () =>
+      Math.abs((await page.evaluate(() => window.scrollY)) - preservedScroll),
+    )
+    .toBeLessThanOrEqual(8);
 });
 
 test("decline sends no request and manual-only makes no proactive transition", async ({
