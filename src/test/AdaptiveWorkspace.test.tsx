@@ -196,9 +196,12 @@ describe("AdaptiveWorkspace learner journey", () => {
     expect(
       screen.getByRole("heading", { name: /creating a quieter path/i }),
     ).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: /cancel and return to the lesson/i }),
-    );
+    act(() => vi.advanceTimersByTime(1));
+    const cancelButton = screen.getByRole("button", {
+      name: /cancel and return to the lesson/i,
+    });
+    expect(cancelButton).toHaveFocus();
+    fireEvent.click(cancelButton);
     act(() => vi.advanceTimersByTime(1));
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

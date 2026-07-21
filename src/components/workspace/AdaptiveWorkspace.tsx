@@ -111,6 +111,7 @@ export function AdaptiveWorkspace() {
   const manualRequestRef = useRef<ManualHelpRequest | null>(null);
   const baselineRef = useRef<HTMLDivElement>(null);
   const focusReturnRef = useRef<HTMLElement | null>(null);
+  const loadingCancelRef = useRef<HTMLButtonElement>(null);
   const preservedScrollRef = useRef(0);
   const restorePendingRef = useRef(false);
   const demoPreviousEpisodeRef = useRef<string | null>(null);
@@ -271,6 +272,13 @@ export function AdaptiveWorkspace() {
     }, AUTOMATIC_NOTICE_MS);
     return () => window.clearTimeout(timeout);
   }, [consentMode, machine.state]);
+
+  useEffect(() => {
+    if (machine.state !== "ADAPTATION_REQUESTED") return;
+    window.requestAnimationFrame(() => {
+      loadingCancelRef.current?.focus({ preventScroll: true });
+    });
+  }, [machine.state]);
 
   useEffect(() => {
     if (machine.state !== "RECOVERING") return;
@@ -606,7 +614,11 @@ export function AdaptiveWorkspace() {
               </h2>
               <p>The original lesson and your position remain preserved.</p>
             </div>
-            <button type="button" onClick={resetWorkspace}>
+            <button
+              ref={loadingCancelRef}
+              type="button"
+              onClick={resetWorkspace}
+            >
               Cancel and return to the lesson
             </button>
           </div>
