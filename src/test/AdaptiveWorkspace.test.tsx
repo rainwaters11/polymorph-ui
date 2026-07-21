@@ -101,13 +101,11 @@ describe("AdaptiveWorkspace learner journey", () => {
     });
 
     render(<AdaptiveWorkspace />);
-    const helpButton = screen.getByRole("button", {
-      name: /help me with this section/i,
+    const demoButton = screen.getByRole("button", {
+      name: /simulate reading friction/i,
     });
-    helpButton.focus();
-    fireEvent.click(
-      screen.getByRole("button", { name: /simulate reading friction/i }),
-    );
+    demoButton.focus();
+    fireEvent.click(demoButton);
     // The labeled demo intentionally travels through the real 4.1-second
     // jargon-dwell threshold before the next batched snapshot is classified.
     act(() => vi.advanceTimersByTime(4_650));
@@ -128,7 +126,7 @@ describe("AdaptiveWorkspace learner journey", () => {
       writable: true,
       configurable: true,
     });
-    screen.getByRole("button", { name: /simulate reading friction/i }).focus();
+    demoButton.focus();
     act(() => vi.advanceTimersByTime(1_200));
     await act(async () => {
       resolveRequest?.(
@@ -173,7 +171,7 @@ describe("AdaptiveWorkspace learner journey", () => {
       top: 360,
       behavior: "instant",
     });
-    expect(helpButton).toHaveFocus();
+    expect(demoButton).toHaveFocus();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

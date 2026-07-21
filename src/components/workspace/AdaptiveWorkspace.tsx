@@ -112,6 +112,7 @@ export function AdaptiveWorkspace() {
   const baselineRef = useRef<HTMLDivElement>(null);
   const focusReturnRef = useRef<HTMLElement | null>(null);
   const preservedScrollRef = useRef(0);
+  const restorePendingRef = useRef(false);
   const demoPreviousEpisodeRef = useRef<string | null>(null);
   const requestControllersRef = useRef(new Map<number, AbortController>());
   const startedRequestTokensRef = useRef(new Set<number>());
@@ -123,7 +124,7 @@ export function AdaptiveWorkspace() {
         ? document.activeElement
         : null;
     focusReturnRef.current =
-      activeElement && baselineRef.current?.contains(activeElement)
+      activeElement && activeElement !== document.body
         ? activeElement
         : baselineRef.current;
   }, []);
@@ -197,6 +198,16 @@ export function AdaptiveWorkspace() {
     machine.state === "RECOVERED";
 
   const restoreBaselinePosition = useCallback(() => {
+    restorePendingRef.current = true;
+    const top = preservedScrollRef.current;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top, behavior: "instant" });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (machine.state !== "OBSERVING" || !restorePendingRef.current) return;
+    restorePendingRef.current = false;
     const top = preservedScrollRef.current;
     const focusTarget = focusReturnRef.current;
     window.requestAnimationFrame(() => {
@@ -207,7 +218,7 @@ export function AdaptiveWorkspace() {
         baselineRef.current?.focus({ preventScroll: true });
       }
     });
-  }, []);
+  }, [machine.state]);
 
   useEffect(() => {
     try {
