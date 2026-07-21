@@ -161,6 +161,27 @@ describe("AdaptiveExperience", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
+  it("reports recovery after a correct knowledge check", () => {
+    const onKnowledgeConfirmed = vi.fn();
+    render(
+      <AdaptiveExperience
+        plan={validPlan("check-understanding")}
+        sourceTitle="Why APIs enforce rate limits"
+        sourceText="Servers have finite compute and request capacity."
+        onDismiss={noop}
+        onReset={noop}
+        onTelemetryPauseChange={noop}
+        onKnowledgeConfirmed={onKnowledgeConfirmed}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("radio", { name: "Read Retry-After and wait" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Check my answer" }));
+    expect(onKnowledgeConfirmed).toHaveBeenCalledTimes(1);
+  });
+
   it("moves focus into the transformed view and restores it on dismissal", async () => {
     const returnFocusRef = createRef<HTMLButtonElement>();
     const { rerender } = render(

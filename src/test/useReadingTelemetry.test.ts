@@ -19,6 +19,14 @@ function dispatchScroll(y: number) {
   window.dispatchEvent(new Event("scroll"));
 }
 
+function setDocumentVisibility(value: "visible" | "hidden") {
+  Object.defineProperty(document, "visibilityState", {
+    value,
+    configurable: true,
+  });
+  document.dispatchEvent(new Event("visibilitychange"));
+}
+
 function makeSectionNode(sectionId: string): HTMLElement {
   const node = document.createElement("p");
   const section = document.createElement("section");
@@ -47,6 +55,10 @@ function selectWithinSection(sectionId: string, text = "selection") {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  Object.defineProperty(document, "visibilityState", {
+    value: "visible",
+    configurable: true,
+  });
   Object.defineProperty(window, "scrollY", {
     value: 0,
     writable: true,
@@ -84,7 +96,25 @@ describe("useReadingTelemetry", () => {
     expect(snapshot.source).toBe("demo");
     expect(snapshot.sectionId).toBe("rate-limiting-intro");
     expect(snapshot.activeSectionAnchor).toBe("#intro");
+    expect(snapshot.sectionVisibleMs).toBeGreaterThanOrEqual(500);
     expect(typeof snapshot.episodeId).toBe("string");
+  });
+
+  it("starts a fresh episode when genuine evidence changes to demo evidence", () => {
+    const onSnapshot = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ source }: { source: "genuine" | "demo" }) =>
+        useReadingTelemetry({ ...defaultProps(), source, onSnapshot }),
+      { initialProps: { source: "genuine" as "genuine" | "demo" } },
+    );
+    const genuineEpisodeId = result.current.episodeId;
+
+    act(() => result.current.recordQuizIncorrect());
+    rerender({ source: "demo" });
+
+    expect(result.current.episodeId).not.toBe(genuineEpisodeId);
+    expect(result.current.getSnapshot()?.source).toBe("demo");
+    expect(result.current.getSnapshot()?.quizIncorrectCount).toBe(0);
   });
 
   it("debounces emission instead of firing once per recorded signal", () => {
@@ -135,7 +165,9 @@ describe("useReadingTelemetry", () => {
 
     act(() => {
       selectWithinSection("rate-limiting-intro");
+      vi.advanceTimersByTime(150);
       selectWithinSection("rate-limiting-intro");
+      vi.advanceTimersByTime(150);
     });
 
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(1);
@@ -146,7 +178,9 @@ describe("useReadingTelemetry", () => {
 
     act(() => {
       selectWithinSection("rate-limiting-intro");
+      vi.advanceTimersByTime(150);
       selectWithinSection("backoff-section");
+      vi.advanceTimersByTime(150);
     });
 
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(0);
@@ -157,7 +191,9 @@ describe("useReadingTelemetry", () => {
 
     act(() => {
       selectWithinSection("backoff-section");
+      vi.advanceTimersByTime(150);
       selectWithinSection("backoff-section");
+      vi.advanceTimersByTime(150);
     });
 
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(0);
@@ -179,11 +215,12 @@ describe("useReadingTelemetry", () => {
         "rate-limiting-intro",
         "a very specific sentence about exponential backoff",
       );
+      vi.advanceTimersByTime(150);
       secondRead = selectWithinSection(
         "rate-limiting-intro",
         "a very specific sentence about exponential backoff",
       );
-      vi.advanceTimersByTime(600);
+      vi.advanceTimersByTime(650);
     });
 
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(1);
@@ -192,6 +229,31 @@ describe("useReadingTelemetry", () => {
     expect(serialized).not.toMatch(/exponential backoff/i);
     expect(firstRead).not.toHaveBeenCalled();
     expect(secondRead).not.toHaveBeenCalled();
+  });
+
+  it("counts one repeat per completed selection gesture", () => {
+    const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
+    const node = makeSectionNode("rate-limiting-intro");
+    vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: false,
+      anchorNode: node,
+    } as unknown as Selection);
+
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+      document.dispatchEvent(new Event("selectionchange"));
+      document.dispatchEvent(new Event("selectionchange"));
+      vi.advanceTimersByTime(150);
+    });
+    expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(0);
+
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+      document.dispatchEvent(new Event("selectionchange"));
+      document.dispatchEvent(new Event("selectionchange"));
+      vi.advanceTimersByTime(150);
+    });
+    expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(1);
   });
 
   it("counts a manual selection-repeat signal", () => {
@@ -267,6 +329,22 @@ describe("useReadingTelemetry", () => {
     });
 
     expect(result.current.getSnapshot()?.inactivityMs).toBe(1000);
+  });
+
+  it("excludes hidden-tab time from reading inactivity", () => {
+    const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
+
+    act(() => {
+      setDocumentVisibility("hidden");
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(result.current.getSnapshot()?.inactivityMs).toBe(0);
+
+    act(() => {
+      setDocumentVisibility("visible");
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(result.current.getSnapshot()?.inactivityMs).toBe(1_000);
   });
 
   it("counts an incorrect quiz attempt", () => {

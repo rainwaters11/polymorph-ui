@@ -31,6 +31,7 @@ export type AdaptiveExperienceProps = {
   onReset: () => void;
   onTelemetryPauseChange: (paused: boolean) => void;
   onShowOriginalChange?: (showing: boolean) => void;
+  onKnowledgeConfirmed?: () => void;
 };
 
 export function AdaptiveExperience({
@@ -43,6 +44,7 @@ export function AdaptiveExperience({
   onReset,
   onTelemetryPauseChange,
   onShowOriginalChange,
+  onKnowledgeConfirmed,
 }: AdaptiveExperienceProps) {
   const composition = resolveAdaptationComposition(plan);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -127,6 +129,7 @@ export function AdaptiveExperience({
         <AdaptiveQuiz
           key={component}
           knowledgeCheck={validPlan.knowledgeCheck}
+          onCorrect={onKnowledgeConfirmed}
         />
       );
     }
@@ -173,6 +176,20 @@ export function AdaptiveExperience({
       {showOriginal && (
         <StandardReader title={sourceTitle} sourceText={sourceText} />
       )}
+
+      <div className="adaptive-recovery-callout">
+        <div>
+          <p className="adaptive-eyebrow">Ready to continue?</p>
+          <p>Return when this section feels clear. Your place is preserved.</p>
+        </div>
+        <button
+          type="button"
+          className="adaptive-primary-action"
+          onClick={onKnowledgeConfirmed}
+        >
+          I understand — return to lesson
+        </button>
+      </div>
 
       <footer className="adaptive-control-bar" aria-label="Adaptation controls">
         <ShowOriginalControl

@@ -1,6 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BaselineReader } from "@/components/reader/BaselineReader";
+import { ASSISTANCE_CONSENT_STORAGE_KEY } from "@/lib/contracts/assistance";
+
+beforeEach(() => {
+  window.sessionStorage.clear();
+});
 
 describe("BaselineReader", () => {
   it("renders a credible baseline with stable anchor navigation", () => {
@@ -49,6 +54,27 @@ describe("BaselineReader", () => {
     ).toBeInTheDocument();
   });
 
+  it("restores the learner's assistance choice across a page reload", async () => {
+    const first = render(<BaselineReader />);
+    fireEvent.click(screen.getByRole("radio", { name: /only when i ask/i }));
+    expect(window.sessionStorage.getItem(ASSISTANCE_CONSENT_STORAGE_KEY)).toBe(
+      "manual-only",
+    );
+    first.unmount();
+
+    const onPreferenceChange = vi.fn();
+    render(
+      <BaselineReader onAssistancePreferenceChange={onPreferenceChange} />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("radio", { name: /only when i ask/i }),
+      ).toBeChecked(),
+    );
+    expect(onPreferenceChange).toHaveBeenCalledWith("manual-only");
+  });
+
   it("creates a grounded manual-help request without changing the lesson", () => {
     const onManualHelp = vi.fn();
     render(<BaselineReader onManualHelp={onManualHelp} />);
@@ -74,6 +100,26 @@ describe("BaselineReader", () => {
     expect(
       screen.getByRole("heading", { name: "Why APIs enforce rate limits" }),
     ).toBeInTheDocument();
+    expect(helpButton).toHaveFocus();
+  });
+
+  it("returns keyboard focus to the help trigger after cancellation", () => {
+    render(<BaselineReader />);
+
+    const helpButton = screen.getByRole("button", {
+      name: /help me with this section/i,
+    });
+    fireEvent.click(helpButton);
+    const cancel = screen.getByRole("button", { name: /cancel/i });
+    cancel.focus();
+    expect(cancel).toHaveFocus();
+
+    fireEvent.click(cancel);
+
+    expect(helpButton).toHaveFocus();
+    expect(
+      screen.queryByRole("button", { name: /request support/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("reports navigation and rereading through typed callback boundaries", () => {

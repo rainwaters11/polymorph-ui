@@ -1,5 +1,5 @@
-import { BaselineReader } from "@/components/reader/BaselineReader";
+import { AdaptiveWorkspace } from "@/components/workspace/AdaptiveWorkspace";
 
 export default function HomePage() {
-  return <BaselineReader />;
+  return <AdaptiveWorkspace />;
 }

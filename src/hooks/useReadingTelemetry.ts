@@ -13,6 +13,7 @@ import { ReadingTelemetryAggregator } from "@/lib/telemetry/readingTelemetryAggr
 
 const INACTIVITY_POLL_MS = 1000;
 const SNAPSHOT_BATCH_MS = 500;
+const SELECTION_SETTLE_MS = 120;
 
 function createEpisodeId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -132,27 +133,28 @@ export function useReadingTelemetry({
 
   const statusRef = useRef<TelemetryStatus>("active");
   const onSnapshotRef = useRef(onSnapshot);
-  const sectionRef = useRef({ sectionId, activeSectionAnchor });
+  const contextRef = useRef({ sectionId, activeSectionAnchor, source });
   const episodeRef = useRef<MutableEpisodeState | null>(null);
 
   useEffect(() => {
     onSnapshotRef.current = onSnapshot;
   }, [onSnapshot]);
 
-  // A section/anchor change starts a fresh episode: reusing the
+  // A section, anchor, or provenance change starts a fresh episode: reusing the
   // episode id would otherwise let one section's counters leak into
   // the next section's snapshot.
   useEffect(() => {
-    const current = sectionRef.current;
+    const current = contextRef.current;
     if (
       current.sectionId === sectionId &&
-      current.activeSectionAnchor === activeSectionAnchor
+      current.activeSectionAnchor === activeSectionAnchor &&
+      current.source === source
     ) {
       return;
     }
-    sectionRef.current = { sectionId, activeSectionAnchor };
+    contextRef.current = { sectionId, activeSectionAnchor, source };
     setEpisodeId(createEpisodeId());
-  }, [sectionId, activeSectionAnchor]);
+  }, [sectionId, activeSectionAnchor, source]);
 
   // Builds the aggregator for the current episode id. Strict mode's
   // extra mount/unmount/mount pass builds and discards a throwaway
@@ -162,23 +164,38 @@ export function useReadingTelemetry({
     episodeRef.current = createMutableEpisodeState(
       new ReadingTelemetryAggregator({
         episodeId,
-        sectionId: sectionRef.current.sectionId,
-        activeSectionAnchor: sectionRef.current.activeSectionAnchor,
-        source,
+        sectionId: contextRef.current.sectionId,
+        activeSectionAnchor: contextRef.current.activeSectionAnchor,
+        source: contextRef.current.source,
       }),
     );
 
     return () => {
       episodeRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- source is captured once per episode id; a source change alone doesn't need to start a new episode.
   }, [episodeId]);
 
-  const emitSnapshot = useCallback(() => {
+  const flushVisibleDuration = useCallback(() => {
     const episode = episodeRef.current;
-    if (!episode) return;
-    onSnapshotRef.current?.(episode.aggregator.snapshot());
+    if (!episode || episode.sectionVisibleSince === null) return;
+    const now = Date.now();
+    episode.aggregator.recordSectionVisibleMs(
+      now - episode.sectionVisibleSince,
+    );
+    episode.sectionVisibleSince = now;
   }, []);
+
+  const snapshotCurrentEpisode = useCallback((): ReadingTelemetry | null => {
+    const episode = episodeRef.current;
+    if (!episode) return null;
+    flushVisibleDuration();
+    return episode.aggregator.snapshot();
+  }, [flushVisibleDuration]);
+
+  const emitSnapshot = useCallback(() => {
+    const snapshot = snapshotCurrentEpisode();
+    if (snapshot) onSnapshotRef.current?.(snapshot);
+  }, [snapshotCurrentEpisode]);
 
   /**
    * Records engagement without itself accounting for inactivity
@@ -194,6 +211,7 @@ export function useReadingTelemetry({
   }, []);
 
   const pause = useCallback(() => {
+    flushVisibleDuration();
     statusRef.current = "paused";
     setStatus("paused");
     const episode = episodeRef.current;
@@ -201,7 +219,7 @@ export function useReadingTelemetry({
       episode.glossaryHoverStartedAt = null;
       episode.sectionVisibleSince = null;
     }
-  }, []);
+  }, [flushVisibleDuration]);
 
   const resume = useCallback(() => {
     statusRef.current = "active";
@@ -255,14 +273,18 @@ export function useReadingTelemetry({
   }, [markActivity]);
 
   const getSnapshot = useCallback((): ReadingTelemetry | null => {
-    return episodeRef.current?.aggregator.snapshot() ?? null;
-  }, []);
+    return snapshotCurrentEpisode();
+  }, [snapshotCurrentEpisode]);
 
   // Repeat-selection detection keys off the stable containing-section
-  // identity only. The selected text itself is never read, stored, or
-  // emitted.
+  // identity only. Selectionchange events are debounced into one completed
+  // gesture so a browser's many updates during a single drag cannot inflate
+  // the evidence. The selected text itself is never read, stored, or emitted.
   useEffect(() => {
-    function handleSelectionChange() {
+    let settleTimer: number | null = null;
+
+    function recordCompletedSelection() {
+      settleTimer = null;
       if (statusRef.current !== "active") return;
       const episode = episodeRef.current;
       if (!episode) return;
@@ -273,7 +295,7 @@ export function useReadingTelemetry({
       const containingSectionId = findContainingSectionId(selection.anchorNode);
       if (
         !containingSectionId ||
-        containingSectionId !== sectionRef.current.sectionId
+        containingSectionId !== contextRef.current.sectionId
       ) {
         return;
       }
@@ -285,9 +307,19 @@ export function useReadingTelemetry({
       markActivity();
     }
 
+    function handleSelectionChange() {
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(
+        recordCompletedSelection,
+        SELECTION_SETTLE_MS,
+      );
+    }
+
     document.addEventListener("selectionchange", handleSelectionChange);
-    return () =>
+    return () => {
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
       document.removeEventListener("selectionchange", handleSelectionChange);
+    };
   }, [markActivity]);
 
   // Scroll-direction reversal detection.
@@ -327,20 +359,16 @@ export function useReadingTelemetry({
 
   // Section-visibility duration, paused while the tab/document is hidden.
   useEffect(() => {
-    function flushVisibleDuration() {
-      const episode = episodeRef.current;
-      if (!episode || episode.sectionVisibleSince === null) return;
-      episode.aggregator.recordSectionVisibleMs(
-        Date.now() - episode.sectionVisibleSince,
-      );
-    }
-
     function handleVisibilityChange() {
       if (statusRef.current !== "active") return;
       const episode = episodeRef.current;
       if (!episode) return;
       if (document.visibilityState === "visible") {
-        episode.sectionVisibleSince = Date.now();
+        const now = Date.now();
+        episode.sectionVisibleSince = now;
+        // Time spent in another tab is neither active reading nor reading
+        // inactivity. Resume the idle cursor only when the lesson is visible.
+        episode.lastActivityAt = now;
       } else {
         flushVisibleDuration();
         episode.sectionVisibleSince = null;
@@ -352,7 +380,7 @@ export function useReadingTelemetry({
       flushVisibleDuration();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [sectionId]);
+  }, [flushVisibleDuration, sectionId]);
 
   // Sole writer of inactivityMs: records the current continuous idle
   // span. The aggregator keeps the episode's maximum continuous span,
@@ -360,6 +388,12 @@ export function useReadingTelemetry({
   useEffect(() => {
     const interval = window.setInterval(() => {
       if (statusRef.current !== "active") return;
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
       const episode = episodeRef.current;
       if (!episode) return;
       const idleFor = Date.now() - episode.lastActivityAt;
