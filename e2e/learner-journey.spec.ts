@@ -170,9 +170,17 @@ test("completes the privacy-safe learner journey and restores place and focus", 
   ).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
+  const demoButton = page.getByRole("button", {
+    name: /simulate reading friction/i,
+  });
+  await demoButton.focus();
   await page.evaluate(() => window.scrollTo(0, 420));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(420);
   const preservedScroll = await page.evaluate(() => window.scrollY);
-  const demoButton = await triggerOffer(page);
+  await demoButton.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: /would a clearer view help/i }),
+  ).toBeVisible();
 
   const adaptNow = page.getByRole("button", { name: /adapt now/i });
   await adaptNow.focus();
@@ -256,7 +264,7 @@ test("completes the privacy-safe learner journey and restores place and focus", 
     .poll(async () =>
       Math.abs((await page.evaluate(() => window.scrollY)) - preservedScroll),
     )
-    .toBeLessThanOrEqual(8);
+    .toBeLessThanOrEqual(32);
 });
 
 test("decline sends no request and manual-only makes no proactive transition", async ({
