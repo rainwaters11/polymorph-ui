@@ -174,6 +174,7 @@ export function AdaptiveWorkspace() {
         machine.state === "OBSERVING" &&
         preservedEpisodeRef.current !== snapshot.episodeId
       ) {
+        if (snapshot.source === "demo") setDemoStatus("idle");
         // Bind the offer to the exact evidence episode and source section.
         // Later navigation cannot silently change what is sent to the API.
         preservedEpisodeRef.current = snapshot.episodeId;
