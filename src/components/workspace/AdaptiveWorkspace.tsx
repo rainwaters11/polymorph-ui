@@ -442,6 +442,13 @@ export function AdaptiveWorkspace() {
         recordProactiveDecline(gate, machine.assessment!.episodeId, Date.now()),
       );
     }
+    if (telemetrySource === "demo") {
+      telemetry.reset();
+      previousAssessmentRef.current = null;
+      setLatestAssessment(null);
+      setTelemetrySource("genuine");
+      setAdaptationSource(null);
+    }
     dispatch({ type: "DECLINE_ADAPTATION" });
     restoreBaselinePosition();
   }

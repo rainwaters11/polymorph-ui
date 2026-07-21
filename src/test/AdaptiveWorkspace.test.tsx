@@ -233,6 +233,53 @@ describe("AdaptiveWorkspace learner journey", () => {
     });
   });
 
+  it("returns demo telemetry to a fresh genuine episode after decline", () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    render(<AdaptiveWorkspace />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /simulate reading friction/i }),
+    );
+    act(() => vi.advanceTimersByTime(4_650));
+    fireEvent.click(
+      screen.getByRole("button", { name: /stay in standard view/i }),
+    );
+    act(() => vi.advanceTimersByTime(1));
+
+    const evidenceSource = screen.getByText("Evidence source").parentElement;
+    expect(evidenceSource?.querySelector("dd")).toHaveTextContent("genuine");
+
+    const currentSectionLink = screen.getByRole("link", {
+      name: /why apis enforce rate limits/i,
+    });
+    fireEvent.click(currentSectionLink);
+    fireEvent.click(currentSectionLink);
+    for (const scrollY of [0, 100, 50, 120, 40, 130]) {
+      Object.defineProperty(window, "scrollY", {
+        value: scrollY,
+        writable: true,
+        configurable: true,
+      });
+      fireEvent.scroll(window);
+    }
+    fireEvent.click(screen.getByRole("radio", { name: /retry immediately/i }));
+    const checkAnswer = screen.getByRole("button", { name: /check answer/i });
+    fireEvent.click(checkAnswer);
+    fireEvent.click(checkAnswer);
+    act(() => vi.advanceTimersByTime(650));
+
+    const score = screen.getByText("Score").parentElement;
+    const reasonCodes = screen.getByText("Reason codes").parentElement;
+    expect(score?.querySelector("dd")).toHaveTextContent("7");
+    expect(reasonCodes?.querySelector("dd")).toHaveTextContent(
+      "REPEATED_SELECTION, SCROLL_REVERSAL, QUIZ_RETRY",
+    );
+    expect(evidenceSource?.querySelector("dd")).toHaveTextContent("genuine");
+    // The valid five-minute decline cooldown suppresses a second proactive
+    // offer, while the inspector proves the new genuine episode is active.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("keeps direct manual help available in manual-only mode and falls back safely", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
