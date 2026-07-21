@@ -110,6 +110,7 @@ export function AdaptiveWorkspace() {
   const preservedEpisodeRef = useRef<string | null>(null);
   const manualRequestRef = useRef<ManualHelpRequest | null>(null);
   const baselineRef = useRef<HTMLDivElement>(null);
+  const demoTriggerRef = useRef<HTMLButtonElement>(null);
   const focusReturnRef = useRef<HTMLElement | null>(null);
   const loadingCancelRef = useRef<HTMLButtonElement>(null);
   const preservedScrollRef = useRef(0);
@@ -118,17 +119,21 @@ export function AdaptiveWorkspace() {
   const requestControllersRef = useRef(new Map<number, AbortController>());
   const startedRequestTokensRef = useRef(new Set<number>());
 
-  const preserveBaselineContext = useCallback(() => {
-    preservedScrollRef.current = window.scrollY;
-    const activeElement =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    focusReturnRef.current =
-      activeElement && activeElement !== document.body
-        ? activeElement
-        : baselineRef.current;
-  }, []);
+  const preserveBaselineContext = useCallback(
+    (preferredFocusTarget?: HTMLElement | null) => {
+      preservedScrollRef.current = window.scrollY;
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      focusReturnRef.current =
+        preferredFocusTarget ??
+        (activeElement && activeElement !== document.body
+          ? activeElement
+          : baselineRef.current);
+    },
+    [],
+  );
 
   const preserveSourceContext = useCallback(
     (
@@ -165,7 +170,9 @@ export function AdaptiveWorkspace() {
         // Bind the offer to the exact evidence episode and source section.
         // Later navigation cannot silently change what is sent to the API.
         preservedEpisodeRef.current = snapshot.episodeId;
-        preserveBaselineContext();
+        preserveBaselineContext(
+          snapshot.source === "demo" ? demoTriggerRef.current : undefined,
+        );
         preserveSourceContext(
           snapshot.sectionId,
           snapshot.activeSectionAnchor,
@@ -547,6 +554,7 @@ export function AdaptiveWorkspace() {
           </span>
         </div>
         <button
+          ref={demoTriggerRef}
           type="button"
           className="demo-trigger"
           disabled={
