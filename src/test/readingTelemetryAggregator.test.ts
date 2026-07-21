@@ -10,7 +10,6 @@ function makeAggregator(overrides: Partial<EpisodeInit> = {}) {
     sectionId: "rate-limiting-intro",
     activeSectionAnchor: "#intro",
     source: "genuine",
-    assistanceEnabled: true,
     ...overrides,
   });
 }
@@ -25,7 +24,6 @@ describe("ReadingTelemetryAggregator", () => {
       sectionId: "rate-limiting-intro",
       activeSectionAnchor: "#intro",
       source: "genuine",
-      assistanceEnabled: true,
       selectionRepeatCount: 0,
       scrollReversalCount: 0,
       jargonHoverMs: 0,
@@ -75,25 +73,6 @@ describe("ReadingTelemetryAggregator", () => {
     expect(snapshot.sectionVisibleMs).toBe(0);
   });
 
-  it("updates the active section without resetting counters", () => {
-    const aggregator = makeAggregator();
-    aggregator.recordSelectionRepeat();
-    aggregator.setActiveSection("backoff-section", "#backoff");
-
-    const snapshot = aggregator.snapshot();
-    expect(snapshot.sectionId).toBe("backoff-section");
-    expect(snapshot.activeSectionAnchor).toBe("#backoff");
-    expect(snapshot.selectionRepeatCount).toBe(1);
-  });
-
-  it("updates assistanceEnabled in place", () => {
-    const aggregator = makeAggregator({ assistanceEnabled: false });
-    expect(aggregator.assistanceEnabled).toBe(false);
-    aggregator.setAssistanceEnabled(true);
-    expect(aggregator.assistanceEnabled).toBe(true);
-    expect(aggregator.snapshot().assistanceEnabled).toBe(true);
-  });
-
   it("labels demo telemetry distinctly from genuine telemetry", () => {
     const demo = makeAggregator({ source: "demo" });
     expect(demo.snapshot().source).toBe("demo");
@@ -109,7 +88,6 @@ describe("ReadingTelemetryAggregator", () => {
       sectionId: "backoff-section",
       activeSectionAnchor: "#backoff",
       source: "genuine",
-      assistanceEnabled: true,
     });
 
     const snapshot = aggregator.snapshot();
@@ -119,13 +97,33 @@ describe("ReadingTelemetryAggregator", () => {
     expect(snapshot.jargonHoverMs).toBe(0);
   });
 
+  it("has no assistance-enabled or consent-derived state", () => {
+    // Regression test: deterministic eligibility (#7) must stay
+    // evidence-only and independent of assistance consent/decline
+    // state (#14). The aggregator must not expose any such flag.
+    const aggregator = makeAggregator();
+    expect(aggregator).not.toHaveProperty("assistanceEnabled");
+    expect(aggregator).not.toHaveProperty("setAssistanceEnabled");
+    expect(aggregator.snapshot()).not.toHaveProperty("assistanceEnabled");
+  });
+
+  it("has no method to mutate the active section in place", () => {
+    // Regression test: an in-place section update would let one
+    // section's counters leak into another section's snapshot. There
+    // must be no such method — only `reset` with a fresh episode id.
+    const aggregator = makeAggregator();
+    expect(
+      (aggregator as unknown as { setActiveSection?: unknown })
+        .setActiveSection,
+    ).toBeUndefined();
+  });
+
   it("snapshot never includes fields beyond the ReadingTelemetry contract", () => {
     const aggregator = makeAggregator();
     const snapshot = aggregator.snapshot();
     expect(Object.keys(snapshot).sort()).toEqual(
       [
         "activeSectionAnchor",
-        "assistanceEnabled",
         "capturedAt",
         "episodeId",
         "inactivityMs",
@@ -138,5 +136,18 @@ describe("ReadingTelemetryAggregator", () => {
         "source",
       ].sort(),
     );
+  });
+
+  it("snapshot never contains raw selected text under any key", () => {
+    // Regression test: no aggregator method accepts or stores raw
+    // selection content; asserting the emitted snapshot's values are
+    // all numbers/strings from the fixed contract shape, never
+    // arbitrary learner-authored text, guards against a future
+    // regression that threads text through as e.g. an extra field.
+    const aggregator = makeAggregator();
+    aggregator.recordSelectionRepeat();
+    const snapshot = aggregator.snapshot();
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toMatch(/exponential backoff|rate limiting/i);
   });
 });

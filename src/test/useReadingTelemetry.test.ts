@@ -7,7 +7,6 @@ function defaultProps() {
   return {
     sectionId: "rate-limiting-intro",
     activeSectionAnchor: "#intro",
-    assistanceEnabled: true,
   };
 }
 
@@ -20,8 +19,25 @@ function dispatchScroll(y: number) {
   window.dispatchEvent(new Event("scroll"));
 }
 
-function setSelectionText(text: string) {
+function makeSectionNode(sectionId: string): HTMLElement {
+  const node = document.createElement("p");
+  const section = document.createElement("section");
+  section.setAttribute("data-document-section", sectionId);
+  section.appendChild(node);
+  document.body.appendChild(section);
+  return node;
+}
+
+/**
+ * Simulates a real, non-empty text selection anchored inside the given
+ * section's DOM subtree, without ever exposing the hook to selected
+ * text content it should retain.
+ */
+function selectWithinSection(sectionId: string, text = "selection") {
+  const node = makeSectionNode(sectionId);
   vi.spyOn(window, "getSelection").mockReturnValue({
+    isCollapsed: false,
+    anchorNode: node,
     toString: () => text,
   } as unknown as Selection);
   document.dispatchEvent(new Event("selectionchange"));
@@ -39,6 +55,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
+  document.body.innerHTML = "";
 });
 
 describe("useReadingTelemetry", () => {
@@ -66,7 +83,6 @@ describe("useReadingTelemetry", () => {
     expect(snapshot.sectionId).toBe("rate-limiting-intro");
     expect(snapshot.activeSectionAnchor).toBe("#intro");
     expect(typeof snapshot.episodeId).toBe("string");
-    expect(snapshot.assistanceEnabled).toBe(true);
   });
 
   it("debounces emission instead of firing once per recorded signal", () => {
@@ -91,44 +107,74 @@ describe("useReadingTelemetry", () => {
     expect(onSnapshot.mock.calls[0][0].quizIncorrectCount).toBe(3);
   });
 
-  it("does not emit any snapshot while assistance is disabled", () => {
+  it("does not include or expose any assistance-enabled/consent field", () => {
+    // Regression test: deterministic eligibility (#7) must stay
+    // evidence-only and independent of assistance consent/decline
+    // state (#14). The hook's options and every emitted snapshot must
+    // have no such flag, and an active collector must always emit.
     const onSnapshot = vi.fn();
     const { result } = renderHook(() =>
-      useReadingTelemetry({
-        ...defaultProps(),
-        assistanceEnabled: false,
-        onSnapshot,
-      }),
+      useReadingTelemetry({ ...defaultProps(), onSnapshot }),
     );
 
     act(() => {
       result.current.recordQuizIncorrect();
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(600);
     });
 
-    expect(onSnapshot).not.toHaveBeenCalled();
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    const snapshot = onSnapshot.mock.calls[0][0] as ReadingTelemetry;
+    expect(snapshot).not.toHaveProperty("assistanceEnabled");
+    expect(Object.keys(snapshot)).not.toContain("assistanceEnabled");
   });
 
-  it("records repeated selection of the same text as a reread", () => {
+  it("records repeated selection within the same section as a reread", () => {
     const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
 
     act(() => {
-      setSelectionText("exponential backoff");
-      setSelectionText("exponential backoff");
+      selectWithinSection("rate-limiting-intro");
+      selectWithinSection("rate-limiting-intro");
     });
 
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(1);
   });
 
-  it("does not count two different selections as a repeat", () => {
+  it("does not count selections in two different sections as a repeat", () => {
     const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
 
     act(() => {
-      setSelectionText("exponential backoff");
-      setSelectionText("rate limiting");
+      selectWithinSection("rate-limiting-intro");
+      selectWithinSection("backoff-section");
     });
 
     expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(0);
+  });
+
+  it("never stores or emits the raw selected text", () => {
+    // Regression test: only the containing section id may be used for
+    // repeat-selection detection; the selected text content itself
+    // must never be retained on episode state or appear in a snapshot.
+    const onSnapshot = vi.fn();
+    const { result } = renderHook(() =>
+      useReadingTelemetry({ ...defaultProps(), onSnapshot }),
+    );
+
+    act(() => {
+      selectWithinSection(
+        "rate-limiting-intro",
+        "a very specific sentence about exponential backoff",
+      );
+      selectWithinSection(
+        "rate-limiting-intro",
+        "a very specific sentence about exponential backoff",
+      );
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(1);
+    const snapshot = onSnapshot.mock.calls[0][0] as ReadingTelemetry;
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toMatch(/exponential backoff/i);
   });
 
   it("counts a manual selection-repeat signal", () => {
@@ -189,6 +235,30 @@ describe("useReadingTelemetry", () => {
     expect(result.current.getSnapshot()?.inactivityMs).toBeGreaterThanOrEqual(
       3000,
     );
+  });
+
+  it("measures continuous inactivity without double-counting overlapping activity", () => {
+    // Regression test: activity events must only advance the activity
+    // cursor, never record duration themselves, so a real event
+    // firing between poller ticks cannot double-book the same window
+    // together with the poller.
+    const { result } = renderHook(() => useReadingTelemetry(defaultProps()));
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    // A real activity signal mid-window should not add its own
+    // inactivity recording on top of the poller's.
+    act(() => {
+      result.current.recordQuizIncorrect();
+      vi.advanceTimersByTime(1000);
+    });
+
+    const snapshot = result.current.getSnapshot();
+    // Two full 1000ms poll windows elapsed; the activity signal reset
+    // the cursor but recorded no duration of its own, so the total
+    // must stay at exactly two windows, not more.
+    expect(snapshot?.inactivityMs).toBe(2000);
   });
 
   it("counts an incorrect quiz attempt", () => {
@@ -280,6 +350,66 @@ describe("useReadingTelemetry", () => {
     const snapshot = result.current.getSnapshot();
     expect(snapshot?.selectionRepeatCount).toBe(0);
     expect(snapshot?.quizIncorrectCount).toBe(0);
+  });
+
+  it("starts a fresh episode with zeroed counters when the active section changes", () => {
+    // Regression test: an in-place section update previously kept the
+    // same episode id and counters, letting section A's evidence be
+    // attributed to section B in the next snapshot.
+    const { result, rerender } = renderHook(
+      (props: { sectionId: string; activeSectionAnchor: string }) =>
+        useReadingTelemetry(props),
+      { initialProps: defaultProps() },
+    );
+
+    act(() => {
+      result.current.recordSelectionRepeat();
+      result.current.recordQuizIncorrect();
+      dispatchScroll(100);
+      dispatchScroll(200);
+      dispatchScroll(100);
+    });
+
+    const previousEpisodeId = result.current.episodeId;
+    const previousSnapshot = result.current.getSnapshot();
+    expect(previousSnapshot?.selectionRepeatCount).toBe(1);
+    expect(previousSnapshot?.quizIncorrectCount).toBe(1);
+    expect(previousSnapshot?.scrollReversalCount).toBe(1);
+
+    act(() => {
+      rerender({
+        sectionId: "backoff-section",
+        activeSectionAnchor: "#backoff",
+      });
+    });
+
+    expect(result.current.episodeId).not.toBe(previousEpisodeId);
+    const nextSnapshot = result.current.getSnapshot();
+    expect(nextSnapshot?.sectionId).toBe("backoff-section");
+    expect(nextSnapshot?.activeSectionAnchor).toBe("#backoff");
+    expect(nextSnapshot?.selectionRepeatCount).toBe(0);
+    expect(nextSnapshot?.quizIncorrectCount).toBe(0);
+    expect(nextSnapshot?.scrollReversalCount).toBe(0);
+  });
+
+  it("does not start a fresh episode when section/anchor are unchanged", () => {
+    const { result, rerender } = renderHook(
+      (props: { sectionId: string; activeSectionAnchor: string }) =>
+        useReadingTelemetry(props),
+      { initialProps: defaultProps() },
+    );
+
+    act(() => {
+      result.current.recordSelectionRepeat();
+    });
+    const previousEpisodeId = result.current.episodeId;
+
+    act(() => {
+      rerender(defaultProps());
+    });
+
+    expect(result.current.episodeId).toBe(previousEpisodeId);
+    expect(result.current.getSnapshot()?.selectionRepeatCount).toBe(1);
   });
 
   it("cleans up listeners and timers on unmount", () => {

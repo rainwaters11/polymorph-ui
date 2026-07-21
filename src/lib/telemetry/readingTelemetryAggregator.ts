@@ -12,7 +12,6 @@ export type EpisodeInit = {
   sectionId: DocumentSectionId;
   activeSectionAnchor: DocumentSectionAnchor;
   source: TelemetrySource;
-  assistanceEnabled: boolean;
 };
 
 type EpisodeState = EpisodeInit & {
@@ -44,7 +43,15 @@ function createEpisodeState(init: EpisodeInit): EpisodeState {
  * (or simulated demo) browser signals.
  *
  * No thresholds, scores, or eligibility decisions are made here; that
- * classification is out of scope for this module.
+ * classification is out of scope for this module. There is also no
+ * assistance-enabled or consent flag: eligibility evidence must stay
+ * independent of consent state (#14), so this aggregator has no
+ * concept of assistance being on or off.
+ *
+ * There is intentionally no in-place "change active section" method:
+ * a section change ends the current episode and starts a fresh one
+ * (see `useReadingTelemetry`'s reset-on-section-change behavior), so
+ * counters from one section can never be attributed to another.
  */
 export class ReadingTelemetryAggregator {
   private state: EpisodeState;
@@ -55,22 +62,6 @@ export class ReadingTelemetryAggregator {
 
   get episodeId(): string {
     return this.state.episodeId;
-  }
-
-  get assistanceEnabled(): boolean {
-    return this.state.assistanceEnabled;
-  }
-
-  setAssistanceEnabled(enabled: boolean): void {
-    this.state.assistanceEnabled = enabled;
-  }
-
-  setActiveSection(
-    sectionId: DocumentSectionId,
-    anchor: DocumentSectionAnchor,
-  ): void {
-    this.state.sectionId = sectionId;
-    this.state.activeSectionAnchor = anchor;
   }
 
   recordSelectionRepeat(): void {
@@ -109,7 +100,6 @@ export class ReadingTelemetryAggregator {
       sectionId: this.state.sectionId,
       activeSectionAnchor: this.state.activeSectionAnchor,
       source: this.state.source,
-      assistanceEnabled: this.state.assistanceEnabled,
       selectionRepeatCount: this.state.selectionRepeatCount,
       scrollReversalCount: this.state.scrollReversalCount,
       jargonHoverMs: this.state.jargonHoverMs,

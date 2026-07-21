@@ -24,7 +24,6 @@ function createEpisodeId(): string {
 export type UseReadingTelemetryOptions = {
   sectionId: DocumentSectionId;
   activeSectionAnchor: DocumentSectionAnchor;
-  assistanceEnabled: boolean;
   source?: TelemetrySource;
   onSnapshot?: ReadingTelemetryCallback;
 };
@@ -46,8 +45,22 @@ type MutableEpisodeState = {
   aggregator: ReadingTelemetryAggregator;
   lastScrollY: number | null;
   lastScrollDirection: "up" | "down" | null;
-  lastSelectedText: string | null;
+  /**
+   * Identity of the document section containing the most recent
+   * non-empty selection — never the selected text itself. Comparing
+   * this stable, already-public section id is enough to detect a
+   * "reread" of the same section without retaining any content.
+   */
+  lastSelectionSectionId: DocumentSectionId | null;
   glossaryHoverStartedAt: number | null;
+  /**
+   * Single source of truth for inactivity accounting: the poller is
+   * the only writer of `inactivityMs`, ticking off whole
+   * `INACTIVITY_POLL_MS` windows since this timestamp. Activity
+   * signals only ever advance this timestamp forward (never record
+   * duration themselves), so no window can be double-counted between
+   * an event handler and the poller.
+   */
   lastActivityAt: number;
   sectionVisibleSince: number | null;
 };
@@ -60,7 +73,7 @@ function createMutableEpisodeState(
     aggregator,
     lastScrollY: null,
     lastScrollDirection: null,
-    lastSelectedText: null,
+    lastSelectionSectionId: null,
     glossaryHoverStartedAt: null,
     lastActivityAt: now,
     sectionVisibleSince:
@@ -71,26 +84,46 @@ function createMutableEpisodeState(
 }
 
 /**
+ * Finds the nearest ancestor's `data-document-section` value for a DOM
+ * node, so repeat-selection detection can key off the stable section
+ * identity instead of the selected text content.
+ */
+function findContainingSectionId(node: Node | null): string | null {
+  let element = node instanceof Element ? node : (node?.parentElement ?? null);
+  while (element) {
+    const sectionId = element.getAttribute?.("data-document-section");
+    if (sectionId) return sectionId;
+    element = element.parentElement;
+  }
+  return null;
+}
+
+/**
  * Aggregates privacy-safe reading-friction signals for one episode and
  * periodically emits a batched ReadingTelemetry snapshot. Collection
- * status (`active`/`paused`) is independent of assistance consent:
- * pausing stops collection immediately, and `assistanceEnabled` only
- * controls whether snapshots are emitted outward, never whether the
- * underlying evidence is collected.
+ * status (`active`/`paused`) is the only gate on collection; there is
+ * no assistance-enabled or consent flag anywhere in this hook or the
+ * emitted contract; per DESIGN.md and #14, deterministic eligibility
+ * must stay evidence-only and independent of assistance consent or
+ * decline state. An active collector always emits its summaries —
+ * consent-based routing is #10's responsibility, applied downstream.
  *
- * The initial episode id uses React's lazy `useState` initializer (the
- * sanctioned one-time-impurity pattern) so render stays pure; every
- * other mutation happens in effects or event-driven callbacks, which
- * keeps this hook safe under React Strict Mode's mount/unmount/mount
- * cycle without creating duplicate listeners.
+ * A change to the active section/anchor ends the current episode and
+ * starts a fresh one with zeroed counters, so evidence from one
+ * section can never be attributed to another.
  *
- * No raw events, keystrokes, or per-interaction timestamps ever leave
- * this hook — only aggregated counts and durations.
+ * All impure setup (episode id, aggregator construction) happens via
+ * React's lazy useState initializer and effects rather than the render
+ * body, keeping the hook safe under React Strict Mode's
+ * mount/unmount/mount cycle without creating duplicate listeners.
+ *
+ * No raw events, keystrokes, selected text, or per-interaction
+ * timestamps ever leave this hook — only aggregated counts and
+ * durations.
  */
 export function useReadingTelemetry({
   sectionId,
   activeSectionAnchor,
-  assistanceEnabled,
   source = "genuine",
   onSnapshot,
 }: UseReadingTelemetryOptions): ReadingTelemetryControls {
@@ -98,7 +131,6 @@ export function useReadingTelemetry({
   const [episodeId, setEpisodeId] = useState<string>(() => createEpisodeId());
 
   const statusRef = useRef<TelemetryStatus>("active");
-  const assistanceEnabledRef = useRef(assistanceEnabled);
   const onSnapshotRef = useRef(onSnapshot);
   const sectionRef = useRef({ sectionId, activeSectionAnchor });
   const episodeRef = useRef<MutableEpisodeState | null>(null);
@@ -107,23 +139,25 @@ export function useReadingTelemetry({
     onSnapshotRef.current = onSnapshot;
   }, [onSnapshot]);
 
+  // A section/anchor change starts a fresh episode: reusing the
+  // episode id would otherwise let one section's counters leak into
+  // the next section's snapshot.
   useEffect(() => {
-    assistanceEnabledRef.current = assistanceEnabled;
-    episodeRef.current?.aggregator.setAssistanceEnabled(assistanceEnabled);
-  }, [assistanceEnabled]);
-
-  useEffect(() => {
+    const current = sectionRef.current;
+    if (
+      current.sectionId === sectionId &&
+      current.activeSectionAnchor === activeSectionAnchor
+    ) {
+      return;
+    }
     sectionRef.current = { sectionId, activeSectionAnchor };
-    episodeRef.current?.aggregator.setActiveSection(
-      sectionId,
-      activeSectionAnchor,
-    );
+    setEpisodeId(createEpisodeId());
   }, [sectionId, activeSectionAnchor]);
 
-  // Builds the aggregator for the lazily-created episode id on mount.
-  // Strict mode's extra mount/unmount/mount pass builds and discards a
-  // throwaway aggregator before the real one starts; no listeners are
-  // attached here, so nothing duplicates.
+  // Builds the aggregator for the current episode id. Strict mode's
+  // extra mount/unmount/mount pass builds and discards a throwaway
+  // aggregator before the real one starts; no listeners are attached
+  // here, so nothing duplicates.
   useEffect(() => {
     episodeRef.current = createMutableEpisodeState(
       new ReadingTelemetryAggregator({
@@ -131,7 +165,6 @@ export function useReadingTelemetry({
         sectionId: sectionRef.current.sectionId,
         activeSectionAnchor: sectionRef.current.activeSectionAnchor,
         source,
-        assistanceEnabled: assistanceEnabledRef.current,
       }),
     );
 
@@ -142,21 +175,22 @@ export function useReadingTelemetry({
   }, [episodeId]);
 
   const emitSnapshot = useCallback(() => {
-    if (!assistanceEnabledRef.current) return;
     const episode = episodeRef.current;
     if (!episode) return;
     onSnapshotRef.current?.(episode.aggregator.snapshot());
   }, []);
 
+  /**
+   * Records engagement without itself accounting for inactivity
+   * duration — the interval poller below is the sole writer of
+   * `inactivityMs`. This function only advances the activity cursor,
+   * so a real event and a poller tick can never double-book the same
+   * elapsed window.
+   */
   const markActivity = useCallback(() => {
     const episode = episodeRef.current;
     if (!episode) return;
-    const now = Date.now();
-    const idleFor = now - episode.lastActivityAt;
-    if (idleFor > 0) {
-      episode.aggregator.recordInactivityMs(idleFor);
-    }
-    episode.lastActivityAt = now;
+    episode.lastActivityAt = Date.now();
   }, []);
 
   const pause = useCallback(() => {
@@ -183,8 +217,8 @@ export function useReadingTelemetry({
     }
   }, []);
 
-  // Reassigning episodeId triggers the mount effect above to rebuild a
-  // fresh aggregator and episode state for the new episode.
+  // Reassigning episodeId triggers the aggregator-construction effect
+  // above to rebuild a fresh aggregator and episode state.
   const reset = useCallback(() => {
     setEpisodeId(createEpisodeId());
   }, []);
@@ -224,8 +258,10 @@ export function useReadingTelemetry({
     return episodeRef.current?.aggregator.snapshot() ?? null;
   }, []);
 
-  // Text-selection repeat detection: two selections of the same
-  // non-empty text within the current section count as a "reread".
+  // Repeat-selection detection keys off the stable containing-section
+  // identity only. The selected text itself is read transiently to
+  // check for non-emptiness and is never stored on the episode state
+  // or emitted in any snapshot.
   useEffect(() => {
     function handleSelectionChange() {
       if (statusRef.current !== "active") return;
@@ -233,13 +269,17 @@ export function useReadingTelemetry({
       if (!episode) return;
       const selection =
         typeof window !== "undefined" ? window.getSelection() : null;
-      const text = selection ? selection.toString().trim() : "";
+      if (!selection || selection.isCollapsed) return;
+      const text = selection.toString().trim();
       if (!text) return;
 
-      if (episode.lastSelectedText === text) {
+      const containingSectionId = findContainingSectionId(selection.anchorNode);
+      if (!containingSectionId) return;
+
+      if (episode.lastSelectionSectionId === containingSectionId) {
         episode.aggregator.recordSelectionRepeat();
       }
-      episode.lastSelectedText = text;
+      episode.lastSelectionSectionId = containingSectionId;
       markActivity();
     }
 
@@ -312,8 +352,11 @@ export function useReadingTelemetry({
     };
   }, [sectionId]);
 
-  // Inactivity polling: batches idle time into the aggregator without
-  // firing a listener per event; ticks are cheap and cleanup-safe.
+  // Sole writer of inactivityMs: ticks off whole poll windows measured
+  // against `lastActivityAt`, which activity signals only ever advance
+  // (never record duration themselves). This keeps inactivity
+  // accounting continuous and free of double-counting between event
+  // handlers and this poller.
   useEffect(() => {
     const interval = window.setInterval(() => {
       if (statusRef.current !== "active") return;

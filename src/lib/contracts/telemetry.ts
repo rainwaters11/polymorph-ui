@@ -15,19 +15,21 @@ export type TelemetrySource = "genuine" | "demo";
 /**
  * The smallest set of privacy-safe interaction summaries needed to
  * recognize reading friction. Every field is a locally aggregated
- * count or duration — never a raw event, keystroke, or timestamp
- * series. `assistanceEnabled` records whether adaptive assistance was
- * enabled at capture time so an eligibility classifier (#7) never
- * needs to re-derive it, but it does not itself gate emission of the
- * snapshot — non-eligible snapshots are always emitted; only
- * adaptation-eligible ones are withheld while assistance is disabled.
+ * count or duration — never a raw event, keystroke, selected text, or
+ * timestamp series.
+ *
+ * Deliberately excludes any assistance-enabled or consent-derived
+ * flag: per DESIGN.md and #14, deterministic eligibility (#7) must
+ * stay evidence-only and independent of assistance consent/decline
+ * state. An active collector always emits privacy-safe summaries;
+ * consent and proactive routing are #10's responsibility, applied
+ * downstream of this evidence, never inside it.
  */
 export type ReadingTelemetry = {
   episodeId: string;
   sectionId: DocumentSectionId;
   activeSectionAnchor: DocumentSectionAnchor;
   source: TelemetrySource;
-  assistanceEnabled: boolean;
   selectionRepeatCount: number;
   scrollReversalCount: number;
   jargonHoverMs: number;
