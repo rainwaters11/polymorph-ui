@@ -192,6 +192,10 @@ describe("classifyReadingFriction", () => {
 
     expect(friction.assessment.state).toBe("possible-confusion");
     expect(recovery.assessment.state).toBe("recovering");
+    expect(recovery.assessment.reasonCodes).toEqual([
+      "REPEATED_SELECTION",
+      "QUIZ_RETRY",
+    ]);
     expect(recovery.assessment.eligibleForAdaptation).toBe(false);
   });
 

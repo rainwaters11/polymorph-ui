@@ -104,6 +104,10 @@ export function classifyReadingFriction(
 ): FrictionClassificationResult {
   const { score, reasonCodes } = scoreReadingTelemetry(telemetry);
   const state = stateForScore(score, session.previousAssessment);
+  const reportedReasonCodes =
+    state === "recovering" && reasonCodes.length === 0
+      ? (session.previousAssessment?.reasonCodes ?? [])
+      : reasonCodes;
   const duplicateEpisode = session.handledEpisodeIds.includes(
     telemetry.episodeId,
   );
@@ -117,9 +121,9 @@ export function classifyReadingFriction(
     episodeId: telemetry.episodeId,
     state,
     score,
-    reasonCodes,
+    reasonCodes: reportedReasonCodes,
     eligibleForAdaptation,
-    recommendedModes: recommendedModes(reasonCodes),
+    recommendedModes: recommendedModes(reportedReasonCodes),
   });
 
   return {
