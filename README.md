@@ -145,6 +145,19 @@ The local lesson covers:
 
 The lesson is intentionally dense enough to create a meaningful before-and-after transformation while remaining professional and accessible in standard mode.
 
+## Repeatable demo runbook
+
+1. Start the app and leave **Ask before changing** selected.
+2. Open the development inspector in the lower-right corner.
+3. Select **Simulate reading friction**. This labeled control records two rereads, two incorrect quiz attempts, and a 4.1-second jargon dwell through the same privacy-safe telemetry hook used by genuine interactions.
+4. Wait for **Would a clearer view help?** and verify the inspector shows the classifier reason codes. No model request has been made yet.
+5. Select **Adapt now**. Verify the interface sends one grounded request, then renders one primary mode and no more than two supporting modes from the approved registry.
+6. Use **Show original text** and **Pause telemetry** to demonstrate learner control. Resume telemetry before continuing the normal demo.
+7. Answer the adapted knowledge check correctly, or select **I understand — return to lesson**.
+8. Verify the recovery notice appears and the original lesson returns at the preserved scroll position and keyboard-focus target.
+
+To demonstrate resilience, stop the app, remove `OPENAI_API_KEY` from `.env.local`, restart, and repeat the same sequence. The route returns a complete deterministic fallback through the same validated registry path. Direct **Help me with this section** requests also remain available when proactive support is disabled or telemetry is paused.
+
 ## Technology
 
 - Next.js App Router
@@ -166,18 +179,16 @@ Completed:
 - MVP architecture and dynamic-UX specification
 - Privacy, accessibility, consent, manual-help, and decline-suppression contracts
 - Continuous integration for formatting, linting, type checking, tests, and production builds
-
-Active implementation:
-
-- Issue #5: polished dense-documentation lesson and adaptation-ready baseline reader
+- Polished dense-documentation lesson and adaptation-ready baseline reader
+- Privacy-safe reading telemetry and deterministic friction classification
+- Structured adaptation API with Zod validation and deterministic fallback
+- Approved adaptive-component registry
+- Explicit end-to-end learner-journey state machine and recovery path
 
 Planned next:
 
-- Privacy-safe reading telemetry
-- Deterministic friction classification
-- Structured adaptation API and deterministic fallback
-- Approved adaptive-component registry
-- End-to-end integration, recovery, accessibility testing, deployment, and submission
+- Accessibility, responsive-layout, and end-to-end QA
+- Deployment, demo capture, and Devpost submission
 
 ## Local setup
 

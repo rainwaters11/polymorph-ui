@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rateLimitingLesson } from "@/content/rate-limiting-lesson";
-import type {
-  AdaptationMode,
-  AssistanceConsentMode,
-  AssistancePreferenceCallback,
-  ManualHelpCallback,
+import {
+  ASSISTANCE_CONSENT_STORAGE_KEY,
+  isAssistanceConsentMode,
+  type AdaptationMode,
+  type AssistanceConsentMode,
+  type AssistancePreferenceCallback,
+  type ManualHelpCallback,
 } from "@/lib/contracts/assistance";
 import type {
   ActiveSectionCallback,
@@ -35,7 +37,7 @@ export type BaselineReaderProps = {
   onManualHelp?: ManualHelpCallback;
 };
 
-function getSectionSourceText(sectionId: string) {
+export function getSectionSourceText(sectionId: string) {
   const section = rateLimitingLesson.sections.find(
     (item) => item.id === sectionId,
   );
@@ -79,6 +81,7 @@ export function BaselineReader({
   const [helpOpen, setHelpOpen] = useState(false);
   const [requestedMode, setRequestedMode] = useState<AdaptationMode>();
   const [statusMessage, setStatusMessage] = useState("");
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
 
   const activeSection = useMemo(
     () =>
@@ -128,6 +131,24 @@ export function BaselineReader({
     return () => observer.disconnect();
   }, [activateSection]);
 
+  useEffect(() => {
+    try {
+      const storedMode = window.sessionStorage.getItem(
+        ASSISTANCE_CONSENT_STORAGE_KEY,
+      );
+      if (isAssistanceConsentMode(storedMode)) {
+        const timeout = window.setTimeout(() => {
+          setConsentMode(storedMode);
+          onAssistancePreferenceChange?.(storedMode);
+        }, 0);
+        return () => window.clearTimeout(timeout);
+      }
+    } catch {
+      // Storage can be unavailable in hardened/private browser contexts.
+      // The safe product default remains the learner-controlled offer path.
+    }
+  }, [onAssistancePreferenceChange]);
+
   function handleNavigation(navigation: SectionNavigation) {
     if (navigation.sectionId === activeSectionId) {
       onTextInteraction?.({
@@ -142,6 +163,11 @@ export function BaselineReader({
 
   function handleConsentChange(mode: AssistanceConsentMode) {
     setConsentMode(mode);
+    try {
+      window.sessionStorage.setItem(ASSISTANCE_CONSENT_STORAGE_KEY, mode);
+    } catch {
+      // Keep the in-memory preference usable when storage is unavailable.
+    }
     onAssistancePreferenceChange?.(mode);
     setStatusMessage(
       mode === "manual-only"
@@ -159,6 +185,10 @@ export function BaselineReader({
       ...(requestedMode ? { requestedMode } : {}),
       requestedAt: new Date().toISOString(),
     };
+    // Return focus to the stable trigger before the chooser unmounts. This
+    // also gives the adaptive workspace a durable element to restore after
+    // the learner exits the transformed view.
+    helpButtonRef.current?.focus({ preventScroll: true });
     onManualHelp?.(request);
     setHelpOpen(false);
     setRequestedMode(undefined);
@@ -238,6 +268,7 @@ export function BaselineReader({
               <span>{activeSection.readingMinutes} min read</span>
             </div>
             <ManualHelpButton
+              buttonRef={helpButtonRef}
               expanded={helpOpen}
               onClick={() => setHelpOpen((open) => !open)}
             />
@@ -247,7 +278,11 @@ export function BaselineReader({
                 selectedMode={requestedMode}
                 onModeChange={setRequestedMode}
                 onSubmit={submitManualHelp}
-                onCancel={() => setHelpOpen(false)}
+                onCancel={() => {
+                  helpButtonRef.current?.focus({ preventScroll: true });
+                  setHelpOpen(false);
+                  setRequestedMode(undefined);
+                }}
               />
             )}
             <AssistancePreferences

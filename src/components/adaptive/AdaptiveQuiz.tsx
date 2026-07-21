@@ -5,8 +5,10 @@ import type { AdaptationPlan } from "@/lib/contracts/adaptation";
 
 export function AdaptiveQuiz({
   knowledgeCheck,
+  onCorrect,
 }: {
   knowledgeCheck?: AdaptationPlan["knowledgeCheck"];
+  onCorrect?: () => void;
 }) {
   const groupName = useId();
   const [selectedIndex, setSelectedIndex] = useState<number>();
@@ -53,7 +55,10 @@ export function AdaptiveQuiz({
         className="adaptive-primary-action"
         type="button"
         disabled={selectedIndex === undefined}
-        onClick={() => setSubmitted(true)}
+        onClick={() => {
+          setSubmitted(true);
+          if (isCorrect) onCorrect?.();
+        }}
       >
         Check my answer
       </button>

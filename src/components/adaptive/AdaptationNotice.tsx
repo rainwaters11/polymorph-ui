@@ -2,10 +2,16 @@ export function AdaptationNotice({
   reason,
   onAdapt,
   onStay,
+  eyebrow = "Support is available",
+  title = "Would a clearer view help?",
+  primaryLabel = "Adapt now",
 }: {
   reason: string;
   onAdapt: () => void;
   onStay: () => void;
+  eyebrow?: string;
+  title?: string;
+  primaryLabel?: string;
 }) {
   return (
     <section
@@ -13,8 +19,8 @@ export function AdaptationNotice({
       aria-labelledby="adaptation-notice-title"
     >
       <div>
-        <p className="adaptive-eyebrow">Support is available</p>
-        <h2 id="adaptation-notice-title">Would a clearer view help?</h2>
+        <p className="adaptive-eyebrow">{eyebrow}</p>
+        <h2 id="adaptation-notice-title">{title}</h2>
         <p>{reason}</p>
       </div>
       <div className="adaptation-notice-actions">
@@ -23,7 +29,7 @@ export function AdaptationNotice({
           className="adaptive-primary-action"
           onClick={onAdapt}
         >
-          Adapt now
+          {primaryLabel}
         </button>
         <button type="button" className="adaptive-control" onClick={onStay}>
           Stay in standard view
