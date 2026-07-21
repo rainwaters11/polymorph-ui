@@ -182,6 +182,54 @@ describe("AdaptiveExperience", () => {
     expect(onKnowledgeConfirmed).toHaveBeenCalledTimes(1);
   });
 
+  it("reveals a quiz-retry Focus Mission one support level at a time", () => {
+    const onKnowledgeConfirmed = vi.fn();
+    const plan = validPlan("plain-language");
+    plan.supportingModes = ["visual-map", "check-understanding"];
+    plan.transparency.reasonCodes = ["QUIZ_RETRY"];
+
+    render(
+      <AdaptiveExperience
+        plan={plan}
+        sourceTitle="Why APIs enforce rate limits"
+        sourceText="Servers have finite compute and request capacity."
+        onDismiss={noop}
+        onReset={noop}
+        onTelemetryPauseChange={noop}
+        onKnowledgeConfirmed={onKnowledgeConfirmed}
+      />,
+    );
+
+    expect(screen.getByText(/workspace quieted the noise/i)).toBeVisible();
+    expect(screen.getByText(/start with one clue/i)).toBeVisible();
+    expect(
+      screen.getByRole("list", { name: "Support progress" }),
+    ).toHaveTextContent(/Hint.*Visual.*Explanation/);
+    fireEvent.click(screen.getByRole("switch", { name: /reading comfort/i }));
+    expect(
+      screen.getByRole("heading", { level: 2 }).closest(".adaptive-experience"),
+    ).toHaveClass("is-reading-comfort");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Retry immediately" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check my answer" }));
+    expect(
+      screen.queryByText(/a respectful client follows/i),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reveal visual cue" }));
+    expect(screen.getByText("Requests inside a fixed allowance")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Retry immediately" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check my answer" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show short explanation" }),
+    );
+    expect(screen.getByText(/a rate limit is a server rule/i)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Listen to explanation" }),
+    ).toBeInTheDocument();
+  });
+
   it("moves focus into the transformed view and restores it on dismissal", async () => {
     const returnFocusRef = createRef<HTMLButtonElement>();
     const { rerender } = render(

@@ -328,7 +328,7 @@ describe("AdaptiveWorkspace learner journey", () => {
 
     const score = screen.getByText("Score").parentElement;
     const reasonCodes = screen.getByText("Reason codes").parentElement;
-    expect(score?.querySelector("dd")).toHaveTextContent("7");
+    expect(score?.querySelector("dd")).toHaveTextContent("10");
     expect(reasonCodes?.querySelector("dd")).toHaveTextContent(
       "REPEATED_SELECTION, SCROLL_REVERSAL, QUIZ_RETRY",
     );

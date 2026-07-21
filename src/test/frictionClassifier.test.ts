@@ -29,7 +29,7 @@ describe("scoreReadingTelemetry", () => {
   it.each([
     ["selectionRepeatCount", 1, 2, "REPEATED_SELECTION", 2],
     ["scrollReversalCount", 3, 4, "SCROLL_REVERSAL", 2],
-    ["quizIncorrectCount", 1, 2, "QUIZ_RETRY", 3],
+    ["quizIncorrectCount", 1, 2, "QUIZ_RETRY", 6],
   ] as const)(
     "applies the %s threshold only at its configured boundary",
     (field, below, at, reasonCode, weight) => {
@@ -68,18 +68,16 @@ describe("classifyReadingFriction", () => {
       telemetry({ selectionRepeatCount: 2 }),
     );
     const possible = classifyReadingFriction(
-      telemetry({ quizIncorrectCount: 2 }),
+      telemetry({ selectionRepeatCount: 2, jargonHoverMs: 4_001 }),
     );
     const possibleAtFive = classifyReadingFriction(
-      telemetry({ quizIncorrectCount: 2, selectionRepeatCount: 2 }),
-    );
-    const high = classifyReadingFriction(
       telemetry({
-        quizIncorrectCount: 2,
         selectionRepeatCount: 2,
+        scrollReversalCount: 4,
         jargonHoverMs: 4_001,
       }),
     );
+    const high = classifyReadingFriction(telemetry({ quizIncorrectCount: 2 }));
 
     expect([steady.state, steady.score]).toEqual(["steady", 2]);
     expect([possible.state, possible.score]).toEqual(["possible-confusion", 3]);
@@ -150,7 +148,7 @@ describe("classifyReadingFriction", () => {
 
   it("reports recovery only inside the same telemetry episode", () => {
     const friction = classifyReadingFriction(
-      telemetry({ quizIncorrectCount: 2, selectionRepeatCount: 2 }),
+      telemetry({ selectionRepeatCount: 2, scrollReversalCount: 4 }),
     );
     const recovery = classifyReadingFriction(telemetry(), friction);
     const unrelatedSectionEpisode = classifyReadingFriction(
@@ -160,7 +158,10 @@ describe("classifyReadingFriction", () => {
 
     expect(friction.state).toBe("possible-confusion");
     expect(recovery.state).toBe("recovering");
-    expect(recovery.reasonCodes).toEqual(["REPEATED_SELECTION", "QUIZ_RETRY"]);
+    expect(recovery.reasonCodes).toEqual([
+      "REPEATED_SELECTION",
+      "SCROLL_REVERSAL",
+    ]);
     expect(recovery.eligibleForAdaptation).toBe(false);
     expect(unrelatedSectionEpisode.state).toBe("steady");
   });

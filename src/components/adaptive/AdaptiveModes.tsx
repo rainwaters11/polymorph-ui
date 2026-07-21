@@ -1,4 +1,5 @@
 import type { AdaptationPlan } from "@/lib/contracts/adaptation";
+import { TextToSpeechControl } from "@/components/adaptive/TextToSpeechControl";
 
 type InstructionalSupport = AdaptationPlan["instructionalSupport"];
 
@@ -64,16 +65,27 @@ export function GlossaryAccordion({
 
 export function PlainLanguagePanel({
   support,
+  showListenControl = false,
 }: {
   support: InstructionalSupport;
+  showListenControl?: boolean;
 }) {
   return (
     <section
       className="adaptive-card plain-language-panel"
       aria-labelledby="plain-language-heading"
     >
-      <p className="adaptive-eyebrow">Plain-language explanation</p>
-      <h3 id="plain-language-heading">{support.heading}</h3>
+      <div className="plain-language-heading-row">
+        <div>
+          <p className="adaptive-eyebrow">Plain-language explanation</p>
+          <h3 id="plain-language-heading">{support.heading}</h3>
+        </div>
+        {showListenControl && (
+          <TextToSpeechControl
+            text={`${support.heading}. ${support.explanation}`}
+          />
+        )}
+      </div>
       <p className="adaptive-lead">{support.explanation}</p>
       {support.analogy && (
         <aside className="adaptive-analogy" aria-label="Helpful analogy">
