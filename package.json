@@ -8,13 +8,15 @@
   },
   "scripts": {
     "dev": "next dev",
+    "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "build": "next build",
-    "format": "prettier --write README.md eslint.config.mjs next.config.ts package.json postcss.config.mjs src tsconfig.json vitest.config.ts",
-    "format:check": "prettier --check README.md eslint.config.mjs next.config.ts package.json postcss.config.mjs src tsconfig.json vitest.config.ts"
+    "format": "prettier --write README.md e2e eslint.config.mjs next.config.ts package.json playwright.config.ts postcss.config.mjs src tsconfig.json vitest.config.ts",
+    "format:check": "prettier --check README.md e2e eslint.config.mjs next.config.ts package.json playwright.config.ts postcss.config.mjs src tsconfig.json vitest.config.ts"
   },
   "dependencies": {
     "next": "16.2.10",
@@ -24,6 +26,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",

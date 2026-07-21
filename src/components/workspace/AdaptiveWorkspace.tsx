@@ -530,7 +530,7 @@ export function AdaptiveWorkspace() {
   }
 
   return (
-    <main className="adaptive-workspace">
+    <div className="adaptive-workspace">
       <aside className="demo-console" aria-label="Hackathon demo controls">
         <div>
           <p className="adaptive-eyebrow">Live demo control</p>
@@ -601,7 +601,7 @@ export function AdaptiveWorkspace() {
       )}
 
       {machine.state === "ADAPTATION_REQUESTED" && (
-        <section
+        <main
           className="workspace-loading"
           aria-labelledby="workspace-loading-title"
         >
@@ -622,11 +622,11 @@ export function AdaptiveWorkspace() {
               Cancel and return to the lesson
             </button>
           </div>
-        </section>
+        </main>
       )}
 
       {adapted && machine.plan && (
-        <div className="workspace-adapted-shell">
+        <main className="workspace-adapted-shell">
           {machine.state === "RECOVERING" && (
             <p className="recovery-status" role="status">
               Nice work — restoring the full lesson…
@@ -650,7 +650,7 @@ export function AdaptiveWorkspace() {
             }
             onKnowledgeConfirmed={() => dispatch({ type: "RECOVERY_DETECTED" })}
           />
-        </div>
+        </main>
       )}
 
       <div
@@ -718,6 +718,6 @@ export function AdaptiveWorkspace() {
           </dl>
         </details>
       )}
-    </main>
+    </div>
   );
 }
