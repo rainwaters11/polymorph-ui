@@ -320,7 +320,10 @@ test("AI-disabled fallback keeps every escape control usable by keyboard", async
   expect(isRecord(responseBody) && responseBody.fallback).toBe(true);
 
   await expect(
-    page.getByRole("heading", { name: /a simpler view of this section/i }),
+    page.getByRole("heading", {
+      level: 2,
+      name: /a simpler view of this section/i,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText(/complete safe fallback is shown/i),
@@ -345,7 +348,10 @@ test("AI-disabled fallback keeps every escape control usable by keyboard", async
 
   const helpButton = await requestManualHelp(page);
   await expect(
-    page.getByRole("heading", { name: /a simpler view of this section/i }),
+    page.getByRole("heading", {
+      level: 2,
+      name: /a simpler view of this section/i,
+    }),
   ).toBeVisible();
   const dismiss = page.getByRole("button", {
     name: /return to standard view/i,

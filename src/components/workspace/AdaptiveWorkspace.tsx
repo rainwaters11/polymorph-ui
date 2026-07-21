@@ -201,8 +201,14 @@ export function AdaptiveWorkspace() {
   const restoreBaselinePosition = useCallback(() => {
     restorePendingRef.current = true;
     const top = preservedScrollRef.current;
+    const focusTarget = focusReturnRef.current;
     window.requestAnimationFrame(() => {
       window.scrollTo({ top, behavior: "instant" });
+      if (focusTarget?.isConnected) {
+        focusTarget.focus({ preventScroll: true });
+      } else {
+        baselineRef.current?.focus({ preventScroll: true });
+      }
     });
   }, []);
 
